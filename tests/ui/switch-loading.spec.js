@@ -126,6 +126,12 @@ test("internal switching keeps the shell and branded loader throughout creation 
     "aria-busy",
     "true",
   );
+  await favorite(page, "Music").click();
+  expect(
+    await page.evaluate(() =>
+      window.commands.filter((c) => c.command === "launch_shortcut"),
+    ),
+  ).toHaveLength(2);
   await ready(page);
   expect(await page.evaluate(() => window.homeFrames)).toBe(0);
   expect(
@@ -257,4 +263,9 @@ test("Home remains usable during loading and a Home request during native creati
   await expect(page.locator("#settings-view")).toBeVisible();
   await expect(page.locator("#browser-loading")).toBeHidden();
   expect(await page.evaluate(() => window.site)).toBeNull();
+  expect(
+    await page.evaluate(() =>
+      window.commands.filter((c) => c.command === "browser_reveal"),
+    ),
+  ).toHaveLength(0);
 });

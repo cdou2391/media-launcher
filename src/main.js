@@ -130,7 +130,7 @@ async function launch(app, mode) {
       usage.launch(shortcut, result.mode);
       if (transition) {
         transition.opening = false;
-        await refreshBrowser();
+        if (queuedBrowserView === null) await refreshBrowser();
       }
       if (result.mode !== "internal") toast(result.reason);
     } else {
@@ -145,6 +145,11 @@ async function launch(app, mode) {
       const current = await invoke("browser_status").catch(() => null);
       endBrowserLoading();
       if (current) {
+        const restored = beginBrowserLoading({
+          id: current.shortcutId,
+          title: current.title,
+        });
+        restored.opening = false;
         await refreshBrowser();
         browserStatus(`Unable to switch: ${String(error)}`, true);
         toast(`Unable to switch to ${shortcut.title}. ${String(error)}`);
@@ -166,7 +171,12 @@ async function launch(app, mode) {
 }
 async function launchFavorite(app) {
   if (favoriteLaunchBusy || launching || browserActionBusy) return;
-  if (browsing && browserContext?.shortcutId === app.id) return;
+  if (
+    browsing &&
+    (browserContext?.shortcutId === app.id ||
+      browserTransition?.shortcutId === app.id)
+  )
+    return;
   favoriteLaunchBusy = true;
   favoritesRail.setBusy(true);
   try {
@@ -354,7 +364,7 @@ function leaveBrowser() {
 }
 function beginBrowserLoading(app) {
   browserEntry++;
-  browserTransition = { opening: true };
+  browserTransition = { shortcutId: app.id, opening: true };
   $("#toast").classList.add("hidden");
   browserContext = null;
   usage.contextChanged();

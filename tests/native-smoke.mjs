@@ -22,10 +22,19 @@ const result = {
   checks: [],
 };
 let fixtureRequests = 0;
+const heldResponses = new Set();
 const fixture = http.createServer(async (request, response) => {
   if (request.url === "/") fixtureRequests++;
   if (request.url === "/second")
-    await new Promise((resolve) => setTimeout(resolve, 1600));
+    await new Promise((resolve) => {
+      const release = () => {
+        clearTimeout(timer);
+        heldResponses.delete(release);
+        resolve();
+      };
+      const timer = setTimeout(release, 20000);
+      heldResponses.add(release);
+    });
   response.setHeader("Content-Type", "text/html");
   response.end(
     '<!doctype html><html><title>Remote isolation fixture</title><body><h1>Remote isolation fixture</h1><button id="fullscreen" onclick="document.documentElement.requestFullscreen()">Fullscreen</button><button id="popup" onclick="window.open(\'/popup\')">Popup</button><button id="local" onclick="location.href=\'http://tauri.localhost/index.html\'">Local navigation</button></body></html>',
@@ -241,6 +250,10 @@ try {
       await waitFor(() => old.isClosed(), "favorite closes previous service");
     if (suffix === "two") {
       await main.locator("#browser-loading:not(.hidden)").waitFor();
+      await waitFor(
+        () => heldResponses.size > 0,
+        "controlled document is held before completion",
+      );
       assert.match(
         await main.locator("#browser-loading-title").textContent(),
         /Favorite two/,
@@ -266,6 +279,7 @@ try {
         true,
         "A loading child must not reveal prematurely",
       );
+      for (const release of heldResponses) release();
     }
     favoriteRemote = await waitFor(
       () =>
@@ -355,9 +369,14 @@ try {
   );
   await main.locator('.rail-favorite[data-shortcut-id="favorite-two"]').click();
   await main.locator("#browser-loading:not(.hidden)").waitFor();
+  await waitFor(
+    () => heldResponses.size > 0,
+    "controlled cancellation document is held",
+  );
   await main.locator('.rail-link[data-view="home"]').click();
   await main.locator("body:not(.browsing)").waitFor();
-  await pause(1800);
+  for (const release of heldResponses) release();
+  await pause(500);
   assert.equal(await main.locator("#browser-loading:not(.hidden)").count(), 0);
   assert.equal(
     await main.evaluate(() =>
@@ -824,6 +843,7 @@ try {
   result.processOutput = processOutput;
   process.exitCode = 1;
 } finally {
+  for (const release of heldResponses) release();
   if (browser) await browser.close().catch(() => {});
   if (child.exitCode === null) child.kill();
   fixture.closeAllConnections();

@@ -18,6 +18,8 @@ New native views are created outside the client area, hidden, then assigned the 
 
 **Next:** build both Windows architectures, run the updated native x64 suite against the exact new EXE, and publish the next unused preview release under the standing delivery instruction. Then verify switching by touch on physical Surface.
 
+Final review also preserves an already-loading favorite when reselected, restores the old site's loading shell if its close fails, and avoids revealing a newly created child when the user has already requested a local sidebar destination. The native fixture now holds/release-controls delayed documents rather than relying on a fixed network delay, so premature-reveal checks are deterministic. The superseded initial CI run is cancelled before packaging; the final source will be built independently.
+
 ## Favorites in the sidebar - built and x64 runtime validated
 
 Added a separate Favorites group between primary navigation and Settings. Each shortcut reuses its saved color/mark with a small visible name, accessible full name and tooltip. The list scrolls independently; primary navigation and Settings stay available in short windows. Empty favorites hide the group. Phone previews use a star button opening a labeled panel above the bottom navigation, with Escape/outside-click dismissal. Search does not filter the rail; saved stars and edits update it immediately without changing the v2 schema. An unchanged list keeps its DOM/focus/scroll position.
