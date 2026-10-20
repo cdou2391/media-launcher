@@ -4,15 +4,19 @@
 
 Phase 0 safeguards and Phase 1 application code are implemented. Both architectures build and pass Rust tests in CI; the x64 package passes real WebView2 automation. Phase exit gates remain OPEN for physical touch/fullscreen/DPI/rotation, ARM64 runtime, provider login/playback and remaining baseline local-file/app launch checks. No Phase 2+ feature was added.
 
-## Entertainment banner - implemented in source
+## Entertainment banner - built and x64 runtime validated
 
 Replaced the abstract Home hero decoration with a locally bundled, generated cinematic portrait collage of contemporary actors and singers. The existing gold A/arrow remain crisp HTML/CSS overlays and visible at every breakpoint. Wide layouts keep the copy on the left; layouts at 1180px and below show the full artwork above the copy so faces are not cropped. The generated PNG is 2172 × 724; [artwork notes and exact prompt](BANNER_ARTWORK.md) record the built-in tool mode.
 
-**Exact changed files:** index.html; src/style.css; src/assets/aura-entertainment-banner-v1.png (new); docs/BANNER_ARTWORK.md (new); README.md; docs/PROGRESS.md.
+**Exact changed files:** index.html; src/style.css; src/assets/aura-entertainment-banner-v1.png (new); docs/BANNER_ARTWORK.md (new); docs/BANNER_NATIVE_RESULT.json (new build evidence); README.md; docs/PROGRESS.md.
 
-**Actual checks:** lint/format, 22 Node/config tests, Vite production build and all 16 Chrome-preview UI tests PASS locally. Visually inspected browser screenshots at 1920, 1440, 1280, 1180, 900, 800, 480 and 360px viewport widths; the image loads, the A is visible and no horizontal page overflow occurs. The production image also decodes successfully under the native CSP in Chrome. The wide layout preserves the artwork's 3:1 ratio on larger screens. No native code changed and no new native build, CI run or physical Surface validation is claimed for this artwork. Existing delivered EXEs still contain the previous banner.
+**Actual checks:** lint/format, 22 Node/config tests, Vite production build and all 16 Chrome-preview UI tests PASS locally. Visually inspected browser screenshots at 1920, 1440, 1280, 1180, 900, 800, 480 and 360px viewport widths; the image loads, the A is visible and no horizontal page overflow occurs. The production image also decodes successfully under the native CSP in Chrome. The wide layout preserves the artwork's 3:1 ratio on larger screens.
 
-**Next:** rebuild the Windows packages to include the banner when preparing the next test executable, then continue the existing physical Surface/ARM64 acceptance checks.
+**Windows build and delivery:** [CI source 6280746](https://github.com/cdou2391/media-launcher/actions/runs/39437904384) passes frontend/browser checks and six Rust tests independently on x64 and ARM64, and builds both release installers. Downloaded archive SHA256 values match GitHub artifact digests; extracted executables have the expected x64/ARM64 PE architectures. AURA-Banner-Test beside this repository contains the standalone x64 AURA.exe, optional x64 installer, separate ARM64 installer, SHA256SUMS.txt, START-HERE.txt, native results and an actual native banner screenshot. Older build folders remain intact. No installer was run.
+
+**Exact delivered EXE runtime:** Windows 10.0.26200 x64 / WebView2 155.0.4283.62 PASS: embedded artwork decodes at 2172 × 724 and matches the source PNG SHA256; A is visible with no horizontal page overflow. The image was visually inspected in the actual packaged app. The focused check waits for the local page and reads its cached image through the debugger resource API because the native CSP correctly blocks page-script fetch; no CSP or production code was changed for testing. The existing native suite also PASS: HTTPS rendering, migration/restart persistence, ten service/Home cycles, all four sidebar destinations, fullscreen bounds, 12 remote IPC denials, foreground site usage, pause/clear, native minimize/restore, usage restart persistence and Exit. [Exact evidence and delivered hashes](BANNER_NATIVE_RESULT.json). Test instances used isolated profiles with normal desktop permissions. Follow-up evidence/documentation changes leave production/build inputs identical to the CI source commit.
+
+**Next / unverified:** test the delivered EXE on physical Surface touch/DPI/rotation; run ARM64 on an ARM64 device, verify provider login/playback and installer install/uninstall. No new physical hardware acceptance is claimed.
 
 ## Usage tracking in Settings - implemented and validated
 

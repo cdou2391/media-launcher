@@ -17,7 +17,7 @@ The browser preview explains that internal/native windows require the Windows ap
 
 ## Home banner
 
-The Home banner uses a locally bundled cinematic actor/singer collage, with the gold A retained as a sharp HTML/CSS overlay. Narrow layouts show the full artwork above the headline and keep the A visible. See [artwork, generation prompt and dimensions](docs/BANNER_ARTWORK.md). This source update requires a new Windows build to appear in previously delivered executables.
+The Home banner uses a locally bundled cinematic actor/singer collage, with the gold A retained as a sharp HTML/CSS overlay. Narrow layouts show the full artwork above the headline and keep the A visible. See [artwork, generation prompt and dimensions](docs/BANNER_ARTWORK.md). [CI source 6280746](https://github.com/cdou2391/media-launcher/actions/runs/39437904384) builds both Windows installers. The exact delivered x64 EXE passes the embedded-image SHA256/visible-A check and the full native WebView2 smoke suite; see [banner build evidence and binary hashes](docs/BANNER_NATIVE_RESULT.json). AURA-Banner-Test beside the repository contains AURA.exe, separate x64/ARM64 installers, checksums and test results. ARM64 runtime and physical Surface checks remain open.
 
 ## Develop and verify
 
