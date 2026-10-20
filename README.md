@@ -31,7 +31,7 @@ npm run tauri:dev
 
 For an existing Chrome installation, set `$env:PLAYWRIGHT_CHANNEL = 'chrome'` before the browser tests. `npm run dev` serves the UI preview at http://127.0.0.1:5173; that port is fixed to keep the native trusted-origin boundary precise. Stop the preview before starting `tauri:dev`.
 
-Local verification used Windows x64, Node 24.19.0, Rust 1.99.1 and headless Chrome. At the last recorded run, lint/format, 14 unit/configuration tests, the Vite production build and 10 browser tests passed. Rust formatting passed. `cargo check` and `tauri:dev` could not compile because `link.exe` is unavailable. These are separate from native Windows/Surface tests. See [progress](docs/PROGRESS.md) and the [native spike checklist](docs/PHASE_1_SPIKE.md).
+Local verification used Windows x64, Node 24.19.0, Rust 1.99.1 and headless Chrome. At the last recorded run, lint/format, 14 unit/configuration tests, the Vite production build and 12 browser tests passed. Rust formatting passed. `cargo check` and `tauri:dev` could not compile because `link.exe` is unavailable. These are separate from native Windows/Surface tests. See [progress](docs/PROGRESS.md) and the [native spike checklist](docs/PHASE_1_SPIKE.md).
 
 ## Build separate Windows installers
 

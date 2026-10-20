@@ -27,6 +27,7 @@ test("local CSP forbids frames, remote scripts and native global injection", () 
   assert.equal(config.app.withGlobalTauri, false);
   assert.match(config.app.security.csp, /script-src 'self';/);
   assert.match(config.app.security.csp, /frame-src 'none'/);
+  assert.match(config.app.security.csp, /frame-ancestors 'none'/);
   assert.match(config.app.security.csp, /object-src 'none'/);
   assert.ok(!config.app.security.csp.includes("unsafe-eval"));
   assert.ok(!config.app.security.csp.includes("https:"));

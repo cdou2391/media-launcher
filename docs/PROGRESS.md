@@ -24,7 +24,7 @@ Environment: Windows x64 execution host, Node 24.19.0; project-local npm bootstr
 | npm run format:check                                                   | PASS                                                         | Prettier formatting                                                                                                                                       |
 | npm test                                                               | PASS, 14 tests                                               | Migration/recovery, routing/HTTP, URL/path validation, capability/CSP configuration                                                                       |
 | npm run build                                                          | PASS                                                         | Vite bundles both Home and local toolbar                                                                                                                  |
-| npm run test:ui                                                        | PASS, 10 tests in headless Chrome                            | Preview CRUD/persistence, favorites/search/accents, HTTP consent, modal focus, offline shell/exit, toolbar sizing, mocked IPC/fallback and production CSP |
+| npm run test:ui                                                        | PASS, 12 tests in headless Chrome                            | Preview CRUD/persistence, favorites/search/accents, HTTP consent, modal focus, offline shell/exit, toolbar sizing, mocked IPC/fallback and production CSP |
 | cargo fmt --manifest-path src-tauri/Cargo.toml -- --check              | PASS                                                         | Rust syntax parsed and formatted; not typechecking                                                                                                        |
 | cargo generate-lockfile --manifest-path src-tauri/Cargo.toml --offline | PASS                                                         | Rust dependency graph locked                                                                                                                              |
 | cargo check --manifest-path src-tauri/Cargo.toml                       | BLOCKED                                                      | MSVC link.exe missing; fails in dependency build scripts before checking application types                                                                |
@@ -33,7 +33,7 @@ Environment: Windows x64 execution host, Node 24.19.0; project-local npm bootstr
 | Windows CI and installer packaging                                     | NOT YET VERIFIED                                             | Workflow configuration alone is not build evidence                                                                                                        |
 | Physical x64/ARM64 Surface tests                                       | NOT RUN                                                      | Touch, DPI, rotation, fullscreen, provider playback and lifecycle acceptance are open                                                                     |
 
-Two initial preview checks failed (cold-start timeout; incomplete Tauri mock) and were corrected. The production-CSP fixture initially failed on a missing favicon; it now returns 404 correctly. The subsequent complete browser run passed all ten tests. Mocked IPC tests are explicitly named as mocks and do not establish native capability enforcement.
+Two initial preview checks failed (cold-start timeout; incomplete Tauri mock) and were corrected. The production-CSP fixture initially failed on a missing favicon; it now returns 404 correctly. The subsequent complete browser run passed all twelve tests. Mocked IPC tests are explicitly named as mocks and do not establish native capability enforcement.
 
 ## Milestone tracker
 
@@ -45,7 +45,7 @@ Two initial preview checks failed (cold-start timeout; incomplete Tauri mock) an
 
 ## Changed files
 
-Frontend: index.html; browser.html; package.json; package-lock.json; vite.config.js; eslint.config.js; .prettierignore; .gitignore; playwright.config.js; src/main.js; src/native.js; src/style.css; src/browser-controls.js; src/browser-controls.css; src/services/defaults.js; src/services/targets.js; src/services/shortcuts.js; src/services/launch-router.js; src/services/provider-policy.json.
+Frontend: index.html; browser.html; package.json; package-lock.json; vite.config.js; eslint.config.js; .prettierignore; .gitignore; .gitattributes; playwright.config.js; src/main.js; src/native.js; src/style.css; src/browser-controls.js; src/browser-controls.css; src/services/defaults.js; src/services/targets.js; src/services/shortcuts.js; src/services/launch-router.js; src/services/provider-policy.json.
 
 Native: rust-toolchain.toml; src-tauri/Cargo.toml; src-tauri/Cargo.lock; src-tauri/build.rs; src-tauri/tauri.conf.json; src-tauri/capabilities/default.json; src-tauri/capabilities/browser-controls.json; src-tauri/src/lib.rs; src-tauri/src/security.rs; src-tauri/src/policy.rs; src-tauri/src/launch.rs; src-tauri/src/browser.rs.
 

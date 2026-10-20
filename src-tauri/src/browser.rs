@@ -35,15 +35,17 @@ pub struct BrowserState {
 }
 
 fn update(app: &AppHandle, id: u64, phase: &str, message: &str, origin: Option<String>) {
-    if let Ok(mut guard) = app.state::<BrowserState>().session.lock() {
-        if let Some(session) = guard.as_mut().filter(|s| s.id == id) {
-            session.status.phase = phase.into();
-            session.status.message = message.into();
-            if let Some(origin) = origin {
-                session.status.origin = origin;
-            }
-            session.changed = Instant::now();
+    let state = app.state::<BrowserState>();
+    let Ok(mut guard) = state.session.lock() else {
+        return;
+    };
+    if let Some(session) = guard.as_mut().filter(|s| s.id == id) {
+        session.status.phase = phase.into();
+        session.status.message = message.into();
+        if let Some(origin) = origin {
+            session.status.origin = origin;
         }
+        session.changed = Instant::now();
     }
 }
 
@@ -173,7 +175,9 @@ fn create_windows(
         .disable_drag_drop_handler()
         .on_navigation(move |next| {
             // No local asset, file, custom scheme or privileged origin navigation.
-            let allowed = security::website_url(next.as_str(), allow_http).is_ok();
+            let allowed = security::website_url(next.as_str(), allow_http).is_ok()
+                && !security::trusted_page("main", next)
+                && !security::trusted_page("browser-controls", next);
             if !allowed { update(&nav_app, id, "blocked", "This navigation is blocked. Use Open externally for supported sign-in flows.", None); }
             allowed
         })
