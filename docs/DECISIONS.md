@@ -87,7 +87,7 @@ ADR-005/006 now have real x64 WebView2 automation evidence: HTTPS rendering, mig
 
 ## ADR-009 - Local usage totals in Settings
 
-**Status:** Implemented; validation in progress (2026-10-20). Explicitly requested by the user as a Settings addition; no installed-app discovery or system-wide activity monitoring is added.
+**Status:** Implemented; both CI builds and exact x64 delivery executable validated (2026-10-20). Explicitly requested by the user as a Settings addition; no installed-app discovery or system-wide activity monitoring is added.
 
 Track shortcut launch counts, last launch, foreground time in internal sites, and total AURA foreground time. Enable this local-only feature by default for the requested use, with a persistent Track usage switch and inline-confirmed Clear history action. Aggregate history uses versioned `aura-usage-v1` storage, separate from shortcuts/preferences. Persist only shortcut IDs/titles, counts, duration and the last-launch timestamp. Do not store targets, browsing history, credentials or a timeline, and make no network/analytics requests.
 
@@ -98,3 +98,5 @@ The trusted UI samples once per second. Credit intervals only when both samples 
 External launch requests receive a count after successful native acknowledgement, but duration is explicitly Unavailable (external). AURA cannot reliably identify individual external browser tabs or when the user finishes a native app. Preview launches count explicit external-tab requests and preview durations apply to the focused preview only. Failed launches and Retry do not add launches; explicit External fallback is a separate launch. Pause stops all new counts/time without deleting history. Corrupt/future history is preserved and paused until explicit clear; write failures retain session totals with a visible notice.
 
 References: [GetForegroundWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getforegroundwindow), [GetActiveWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getactivewindow).
+
+ADR-009 validation: [exact usage result](USAGE_NATIVE_RESULT.json) records native child-focus timing, pause, clear/cancel, minimized-time exclusion/restore, process restart persistence and 12 remote command denials. Both installers pass CI. Physical Surface input/DPI/rotation, sleep/lock and ARM64 runtime remain open.
