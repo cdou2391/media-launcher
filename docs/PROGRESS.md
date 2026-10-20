@@ -4,6 +4,12 @@
 
 Phase 0 safeguards and Phase 1 application code are implemented. Both architectures build and pass Rust tests in CI; the x64 package passes real WebView2 automation. Phase exit gates remain OPEN for physical touch/fullscreen/DPI/rotation, ARM64 runtime, provider login/playback and remaining baseline local-file/app launch checks. No Phase 2+ feature was added.
 
+## Published Windows preview release
+
+[AURA 0.1.0 Preview 1](https://github.com/cdou2391/media-launcher/releases/tag/v0.1.0-preview.1) is published on GitHub as a prerelease. Tag v0.1.0-preview.1 resolves to the exact tested build commit 6280746a49500bcd28114d646a337b0186be2415. Assets: AURA.exe (standalone x64), AURA-x64-setup.exe, AURA-arm64-setup.exe, SHA256SUMS.txt, BUILD-VALIDATION.json and README.txt. Rechecked the three local executable hashes against the native build evidence before upload; all six server asset SHA256 digests and sizes match their local files. Published state and tag target were verified through the GitHub API. Existing local test builds remain intact.
+
+Documentation changed: README.md and docs/PROGRESS.md. No app code or binaries changed for publication; existing build/runtime evidence below applies. Physical Surface and ARM64 runtime acceptance remain the next checks. This is a preview, with outstanding provider and installer/device validation stated in its release notes.
+
 ## Entertainment banner - built and x64 runtime validated
 
 Replaced the abstract Home hero decoration with a locally bundled, generated cinematic portrait collage of contemporary actors and singers. The existing gold A/arrow remain crisp HTML/CSS overlays and visible at every breakpoint. Wide layouts keep the copy on the left; layouts at 1180px and below show the full artwork above the copy so faces are not cropped. The generated PNG is 2172 × 724; [artwork notes and exact prompt](BANNER_ARTWORK.md) record the built-in tool mode.
