@@ -4,6 +4,16 @@
 
 Phase 0 safeguards and Phase 1 application code are implemented. Both architectures build and pass Rust tests in CI; the x64 package passes real WebView2 automation. Phase exit gates remain OPEN for physical touch/fullscreen/DPI/rotation, ARM64 runtime, provider login/playback and remaining baseline local-file/app launch checks. No Phase 2+ feature was added.
 
+## Entertainment banner - implemented in source
+
+Replaced the abstract Home hero decoration with a locally bundled, generated cinematic portrait collage of contemporary actors and singers. The existing gold A/arrow remain crisp HTML/CSS overlays and visible at every breakpoint. Wide layouts keep the copy on the left; layouts at 1180px and below show the full artwork above the copy so faces are not cropped. The generated PNG is 2172 × 724; [artwork notes and exact prompt](BANNER_ARTWORK.md) record the built-in tool mode.
+
+**Exact changed files:** index.html; src/style.css; src/assets/aura-entertainment-banner-v1.png (new); docs/BANNER_ARTWORK.md (new); README.md; docs/PROGRESS.md.
+
+**Actual checks:** lint/format, 22 Node/config tests, Vite production build and all 16 Chrome-preview UI tests PASS locally. Visually inspected browser screenshots at 1920, 1440, 1280, 1180, 900, 800, 480 and 360px viewport widths; the image loads, the A is visible and no horizontal page overflow occurs. The production image also decodes successfully under the native CSP in Chrome. The wide layout preserves the artwork's 3:1 ratio on larger screens. No native code changed and no new native build, CI run or physical Surface validation is claimed for this artwork. Existing delivered EXEs still contain the previous banner.
+
+**Next:** rebuild the Windows packages to include the banner when preparing the next test executable, then continue the existing physical Surface/ARM64 acceptance checks.
+
 ## Usage tracking in Settings - implemented and validated
 
 Implemented the user's requested local usage view: overall AURA foreground time, internal-site time, per-shortcut launch counts and last launch, persistent tracking toggle, and separately confirmed history clear. External launches show duration Unavailable rather than guessing time outside AURA. No targets, browsing history, credentials or analytics requests are recorded. A narrow native command checks only AURA's foreground HWND, including while its remote child has focus. Optional shortcut ID/session metadata links native service time to the correct shortcut. Tracking begins with this version, with no historical backfill.

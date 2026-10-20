@@ -15,6 +15,10 @@ Phase 0 safeguards and Phase 1 application code are implemented. **Compatible we
 
 The browser preview explains that internal/native windows require the Windows app and offers an explicit external-tab fallback. It does not simulate successful native browsing.
 
+## Home banner
+
+The Home banner uses a locally bundled cinematic actor/singer collage, with the gold A retained as a sharp HTML/CSS overlay. Narrow layouts show the full artwork above the headline and keep the A visible. See [artwork, generation prompt and dimensions](docs/BANNER_ARTWORK.md). This source update requires a new Windows build to appear in previously delivered executables.
+
 ## Develop and verify
 
 Install Node.js 22.13+ (or newer LTS), npm, Rust 1.99.1, Visual Studio C++ build tools with the Windows SDK, and WebView2. Use the x64/ARM64 C++ components matching your target. The checked-in toolchain file selects Rust; both dependency lockfiles are committed.
