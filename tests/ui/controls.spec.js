@@ -40,9 +40,10 @@ test("toolbar Home, Retry and external actions use bounded IPC (mock only)", asy
   await page
     .getByRole("button", { name: "Open externally ↗", exact: true })
     .click();
-  await page
-    .getByRole("button", { name: "⌂ Return to AURA Home", exact: true })
-    .click();
+  await page.evaluate(() =>
+    window.nativeEvents["aura-browser"]({ payload: null }),
+  );
+  await page.locator("#browser-home").click();
   const commands = await page.evaluate(() => window.commands);
   for (const command of ["browser_retry", "browser_external", "browser_home"]) {
     expect(
