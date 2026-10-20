@@ -39,6 +39,10 @@ For an existing Chrome installation, set `$env:PLAYWRIGHT_CHANNEL = 'chrome'` be
 
 Local checks pass: lint/format, 14 unit/configuration tests, the Vite build and 12 headless Chrome tests. [CI source 32e0a9c](https://github.com/cdou2391/media-launcher/actions/runs/39425973205) passes six Rust tests per architecture and creates both installers. The extracted x64 executable passes real WebView2 HTTPS rendering, v1 migration, full-process persistence, 11 remote ACL denials, popup/privileged-origin blocking, Retry, ten Home cycles, all four sidebar destinations, site fullscreen bounds and Exit. The local compiler still needs MSVC link.exe; testing used the CI-built executable. See [progress](docs/PROGRESS.md), [exact sidebar evidence](docs/SIDEBAR_NATIVE_RESULT.json) and [hardware checklist](docs/PHASE_1_SPIKE.md). The earlier [stable-window evidence](docs/NATIVE_SMOKE_RESULT.json) is retained as history.
 
+## Release delivery
+
+Standing user instruction: after every successful Windows application build, push its source and publish the exact binaries as the next GitHub release, without another confirmation. Continue sequential preview tags while this is a preview. Include the built executables/installers, checksums, launch instructions and actual validation results; verify uploaded digests and download links. Existing releases are retained. The full delivery rule is recorded in AGENTS.md.
+
 ## Build separate Windows installers
 
 ```powershell

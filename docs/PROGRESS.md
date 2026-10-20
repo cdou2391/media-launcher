@@ -4,6 +4,10 @@
 
 Phase 0 safeguards and Phase 1 application code are implemented. Both architectures build and pass Rust tests in CI; the x64 package passes real WebView2 automation. Phase exit gates remain OPEN for physical touch/fullscreen/DPI/rotation, ARM64 runtime, provider login/playback and remaining baseline local-file/app launch checks. No Phase 2+ feature was added.
 
+## Standing build-to-release delivery instruction
+
+On 2026-10-21 the user requested that every future build be pushed and published as the next GitHub release. Recorded the ongoing authorization and exact build/tag/checksum/download verification workflow in AGENTS.md, with a README summary. This applies to successful Windows executable/installer builds. Documentation and frontend checks alone do not create a new binary release. No app code or binaries changed for this instruction; Markdown formatting and Git whitespace checks are the relevant validation. Next successful Windows build should use the next available preview version and return its release/direct EXE links.
+
 ## Compact browser bar - built and x64 runtime validated
 
 Reduced the browsing header from 128px to 56px in both trusted CSS and native child bounds. It now shows the service name and one 44px refresh icon. Removed the URL, visible status paragraph, duplicate Home and Open externally buttons. Home/Apps/Library/Settings in the existing sidebar still close the site and restore the chosen AURA view. The icon retains Retry's original-shortcut navigation; it does not grant commands to remote sites. Launch-failure dialogs and External shortcut modes remain available.
