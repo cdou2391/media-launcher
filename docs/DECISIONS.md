@@ -45,7 +45,7 @@
 
 ## ADR-005 — Stable owned control window is the first native spike
 
-**Status:** Implemented as a proof of concept; native acceptance open (2026-10-20).
+**Status:** Implemented; native x64 automation passes, physical acceptance open (2026-10-20).
 
 The remote service is a stable WebviewWindow. A separate bundled browser-controls window is its native owner-child companion through WebviewWindowBuilder.parent. Tauri documents Windows owned-window z-order, minimize and lifetime behavior. This avoids a global topmost overlay and remote DOM/script injection. It does not prove Surface/fullscreen behavior. Controls use at least 48px actions, re-anchor on service monitor/DPI changes, and have a narrower tall layout. Closing either service window restores Home; a local event returns its actual view to Home.
 
@@ -55,7 +55,7 @@ References: [Tauri 2.12.4 WebviewWindowBuilder](https://docs.rs/tauri/2.12.4/tau
 
 ## ADR-006 — Local command ACL plus caller checks and explicit HTTP consent
 
-**Status:** Implemented; live remote IPC negative test outstanding (2026-10-20).
+**Status:** Implemented; eight live x64 remote IPC denials verified, physical repeat open (2026-10-20).
 
 Register every application command in tauri-build's AppManifest and grant only specific allow-command permissions to exact local window labels. The remote service label is never granted a capability; no remote URL entries exist. Each native command separately checks caller label, local origin and local page path. Main/control navigation is pinned to its bundled route. Local CSP disallows frames, remote scripts, objects and remote network connections; development adds only the fixed Vite origin/WebSocket.
 
@@ -68,3 +68,7 @@ Reference: [Tauri AppManifest command permissions](https://docs.rs/tauri-build/2
 **Status:** Implemented with native acceptance pending (2026-10-20).
 
 Auto tries ordinary websites internally, with compatibility visibly unverified; known restricted streaming/auth providers use External. Explicit Internal overrides do not change browser security or DRM behavior. Popups and downloads are denied, with an explicit external path from trusted controls. Retry and external opening use the original approved shortcut, not a page-provided URL. A native document-finished signal is labeled Page received rather than playback/login success. Status polling exposes a 20-second slow-load fallback. Back/forward and full renderer/error instrumentation remain follow-up work within Phase 1; no cross-origin evaluation is introduced to fake history access.
+
+## Native validation follow-up — 2026-10-20
+
+ADR-005/006 now have real x64 WebView2 automation evidence: HTTPS rendering, migration/process persistence, eight ACL denials, Home/lifetime/close/Exit and fallback-related checks pass. Both target architectures compile and package in CI. The first smoke test found that WebView2 can deliver load callbacks after cancellation; load status now preserves blocked warnings until trusted Retry/new session, with a native regression test. Physical owner-window/fullscreen/touch/DPI behavior and ARM64 runtime acceptance remain open, so the stable architecture stays a proof of concept. [Evidence](NATIVE_SMOKE_RESULT.json).

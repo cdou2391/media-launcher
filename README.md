@@ -4,7 +4,7 @@ A touch-first Windows media launcher built with Tauri 2, Rust, Vite and vanilla 
 
 ## Current development status — 2026-10-20
 
-Phase 0 frontend safeguards and Phase 1 application code are implemented. **The native service-window experience is an unverified proof of concept, not a completed Surface release.** Local native compilation stops at the missing MSVC linker. There is no verified installer, native IPC test or provider playback result in this delivery.
+Phase 0 safeguards and Phase 1 application code are implemented. **The native x64 proof of concept passes automated WebView2 checks; physical Surface acceptance remains open.** Both native architectures compile, pass five Rust tests and produce installers in CI. No provider playback, physical touch/fullscreen or ARM64 runtime result is claimed.
 
 - Versioned v2 shortcuts retain v1 favorites, custom targets, colors and marks. Migration keeps the original v1 key and a backup. Unreadable or future-version data is preserved; a visible notice explains session-only changes.
 - Add or edit each shortcut's Auto / Inside AURA / External mode. Tiles show the chosen destination. Windows apps and media files always launch externally.
@@ -31,7 +31,7 @@ npm run tauri:dev
 
 For an existing Chrome installation, set `$env:PLAYWRIGHT_CHANNEL = 'chrome'` before the browser tests. `npm run dev` serves the UI preview at http://127.0.0.1:5173; that port is fixed to keep the native trusted-origin boundary precise. Stop the preview before starting `tauri:dev`.
 
-Local verification used Windows x64, Node 24.19.0, Rust 1.99.1 and headless Chrome. At the last recorded run, lint/format, 14 unit/configuration tests, the Vite production build and 12 browser tests passed. Rust formatting passed. `cargo check` and `tauri:dev` could not compile because `link.exe` is unavailable. These are separate from native Windows/Surface tests. See [progress](docs/PROGRESS.md) and the [native spike checklist](docs/PHASE_1_SPIKE.md).
+Local checks pass: lint/format, 14 unit/configuration tests, the Vite build and 12 headless Chrome tests. Native CI on source commit 8569144 passes five Rust tests per architecture and creates both installers. The extracted x64 package passes real WebView2 HTTPS rendering, v1 migration, full-process persistence, eight remote IPC denials, popup/privileged-origin blocking, Retry, ten Home cycles, close requests and Exit. The local compiler still needs MSVC link.exe; testing used the CI-built executable. See [progress](docs/PROGRESS.md), [exact native evidence](docs/NATIVE_SMOKE_RESULT.json) and [hardware checklist](docs/PHASE_1_SPIKE.md).
 
 ## Build separate Windows installers
 
@@ -42,7 +42,7 @@ npm run tauri:build -- --target x86_64-pc-windows-msvc -- --locked
 npm run tauri:build -- --target aarch64-pc-windows-msvc -- --locked
 ```
 
-Installers are written under `src-tauri/target/<target>/release/bundle/nsis/`. ARM64 cross-compilation requires the ARM64 MSVC components. The Windows workflow uses independent x64 and ARM64 runners, runs frontend/Rust tests with locked dependencies, then builds the corresponding installers. CI configuration is not evidence of a successful run or hardware test.
+Installers are written under `src-tauri/target/<target>/release/bundle/nsis/`. ARM64 cross-compilation requires the ARM64 MSVC components. The Windows workflow uses independent x64 and ARM64 runners, runs frontend/Rust tests with locked dependencies, then builds the corresponding installers. [The validated CI run](https://github.com/cdou2391/media-launcher/actions/runs/39412058478) built both installers; artifact links and SHA256 values are recorded in docs/NATIVE_SMOKE_RESULT.json. Packaging is separate from install/uninstall or hardware acceptance.
 
 ## Use the proof of concept
 
@@ -53,3 +53,13 @@ Installers are written under `src-tauri/target/<target>/release/bundle/nsis/`. A
 5. Exit using Settings → Exit launcher. AURA does not replace Explorer or enforce kiosk mode.
 
 No automatic app discovery, Jellyfin/Plex synchronization, aggregated Continue Watching, built-in media playback or updater has been added. Phase 2 and later remain out of scope. The next release gate is native x64/ARM64 build verification followed by the physical touch/return-navigation and remote IPC negative tests in [the acceptance matrix](docs/ACCEPTANCE_TESTS.md).
+
+## Reproduce the native smoke test
+
+After building or extracting your architecture's executable from the CI installer:
+
+```powershell
+npm run test:native -- "D:\path\to\aura-home-media.exe"
+```
+
+This Windows-only test launches that executable with a unique WebView2 profile and a process-scoped local debug port, serves a controlled untrusted HTTP fixture, and checks actual IPC denials, lifecycle, migration, restart persistence and an HTTPS document. It closes its app processes and leaves result JSON/profile files under the ignored .tools directory. No installer, registry setting, global environment variable or existing browser profile is changed. It requires the installed WebView2 runtime and HTTPS access. A PASS is Windows automation evidence, not physical touch/fullscreen or media-playback validation.

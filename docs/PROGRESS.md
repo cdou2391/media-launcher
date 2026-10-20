@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-10-20. **Scope:** Phase 0 then Phase 1 only.
 
-Phase 0 frontend safeguards and Phase 1 application code are implemented. Phase 0 and Phase 1 exit gates remain OPEN because native compilation, WebView2 isolation and physical Surface acceptance are not verified. No Phase 2+ feature was added.
+Phase 0 safeguards and Phase 1 application code are implemented. Both architectures build and pass Rust tests in CI; the x64 package passes real WebView2 automation. Phase exit gates remain OPEN for physical touch/fullscreen/DPI/rotation, ARM64 runtime, provider login/playback and remaining baseline local-file/app launch checks. No Phase 2+ feature was added.
 
 ## Implemented
 
@@ -13,35 +13,36 @@ Phase 0 frontend safeguards and Phase 1 application code are implemented. Phase 
 - Stable remote WebviewWindow plus owned, trusted Home/Retry/External controls. One service session, guarded lifecycle cleanup, Home restoration/focus, blocked unsafe navigation/popups/downloads, slow-load messaging and explicit fallback.
 - Browser preview states the native limitation instead of representing an external tab as internal browsing.
 
-## Actual local evidence
+## Actual evidence
 
-Environment: Windows x64 execution host, Node 24.19.0; project-local npm bootstrap; isolated Rust 1.99.1 MSVC toolchain; installed headless Google Chrome. No physical Surface interaction. No native AURA executable launched.
+Local host: Windows x64 build 10.0.26200, Node 24.19.0, isolated Rust 1.99.1, headless Chrome, WebView2 155.0.4283.62. No physical Surface interaction. The local native compiler is blocked by missing MSVC link.exe, so the packaged x64 executable was extracted from the CI installer and tested without installation, using isolated WebView2 data.
 
-| Check                                                                  | Result                                                       | Meaning                                                                                                                                                   |
-| ---------------------------------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Dependency installation                                                | PASS; npm reported zero known vulnerabilities during install | package-lock.json created; not a complete security audit                                                                                                  |
-| npm run lint                                                           | PASS                                                         | ESLint over JS source/config/tests                                                                                                                        |
-| npm run format:check                                                   | PASS                                                         | Prettier formatting                                                                                                                                       |
-| npm test                                                               | PASS, 14 tests                                               | Migration/recovery, routing/HTTP, URL/path validation, capability/CSP configuration                                                                       |
-| npm run build                                                          | PASS                                                         | Vite bundles both Home and local toolbar                                                                                                                  |
-| npm run test:ui                                                        | PASS, 12 tests in headless Chrome                            | Preview CRUD/persistence, favorites/search/accents, HTTP consent, modal focus, offline shell/exit, toolbar sizing, mocked IPC/fallback and production CSP |
-| cargo fmt --manifest-path src-tauri/Cargo.toml -- --check              | PASS                                                         | Rust syntax parsed and formatted; not typechecking                                                                                                        |
-| cargo generate-lockfile --manifest-path src-tauri/Cargo.toml --offline | PASS                                                         | Rust dependency graph locked                                                                                                                              |
-| cargo check --manifest-path src-tauri/Cargo.toml                       | BLOCKED                                                      | MSVC link.exe missing; fails in dependency build scripts before checking application types                                                                |
-| npm run tauri:dev -- --no-watch                                        | BLOCKED                                                      | Same missing linker; concurrent preview also occupied fixed port 5173                                                                                     |
-| Rust unit tests / native launch / IPC negative tests                   | NOT RUN                                                      | Require C++/SDK prerequisites and native app                                                                                                              |
-| Windows CI and installer packaging                                     | NOT YET VERIFIED                                             | Workflow configuration alone is not build evidence                                                                                                        |
-| Physical x64/ARM64 Surface tests                                       | NOT RUN                                                      | Touch, DPI, rotation, fullscreen, provider playback and lifecycle acceptance are open                                                                     |
+Source commit: 8569144e0a561ca870dd693fd9ab2c2b7d9385bf. [CI run](https://github.com/cdou2391/media-launcher/actions/runs/39412058478) completed successfully on independent Windows x64 and ARM64 runners.
 
-Two initial preview checks failed (cold-start timeout; incomplete Tauri mock) and were corrected. The production-CSP fixture initially failed on a missing favicon; it now returns 404 correctly. The subsequent complete browser run passed all twelve tests. Mocked IPC tests are explicitly named as mocks and do not establish native capability enforcement.
+| Check                                                      | Actual result                | Scope                                                                                      |
+| ---------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------ |
+| npm run check                                              | PASS                         | ESLint, Prettier, 14 Node/config tests and both Vite entry points                          |
+| npm run test:ui                                            | PASS, 12 tests               | Chrome preview, production CSP, storage/editing/navigation and explicitly mocked IPC cases |
+| cargo fmt and locked manifest/graph                        | PASS                         | Local syntax/format/lock checks                                                            |
+| Native Rust tests in CI                                    | PASS, 5 on each architecture | x86_64-pc-windows-msvc and aarch64-pc-windows-msvc                                         |
+| Native release installers in CI                            | PASS, both architectures     | Separate NSIS artifacts, hashes in NATIVE_SMOKE_RESULT.json                                |
+| Extracted x64 executable startup/HTTPS                     | PASS                         | Real WebView2, https://example.com response 200 and rendered document                      |
+| Remote IPC isolation                                       | PASS, 8 native ACL denials   | Controlled untrusted HTTP fixture; no privileged command succeeded                         |
+| Popup/local-origin navigation and Retry                    | PASS                         | Native blocked statuses remain visible; Retry reissues original request                    |
+| Native lifecycle                                           | PASS                         | Ten service/Home cycles, both service/control close requests and Exit                      |
+| Native migration/persistence                               | PASS                         | v1 favorite, color, mark, accent retained through reload and full app-process restart      |
+| Physical Surface, ARM64 runtime, provider playback         | NOT RUN                      | Still release/acceptance gates                                                             |
+| Installer install/uninstall, native local app/media launch | NOT RUN                      | Builds are not installer or baseline launch acceptance                                     |
+
+The first native run exposed a real WebView2 event-ordering issue: cancelled load events overwrote blocked-navigation warnings. The final code preserves those warnings until a trusted Retry/new session and includes a Rust regression test. An HTTPS assertion also assumed an obsolete page heading; it now verifies the actual response and rendered document. The final native smoke run passes. Raw failures are retained only in ignored local test artifacts; sanitized final evidence is in [NATIVE_SMOKE_RESULT.json](NATIVE_SMOKE_RESULT.json).
 
 ## Milestone tracker
 
-| ID    | Milestone                                                           | Status                                                             |
-| ----- | ------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| P0    | Baseline checks, CSP, command hardening, lockfiles and test harness | Implemented; native build/launch gate blocked                      |
-| P1    | Embedded service window and touch-visible Home path                 | Proof-of-concept code implemented; native/hardware acceptance OPEN |
-| P2–P6 | Discovery, integrations, polish, broader security/release           | NOT STARTED                                                        |
+| ID    | Milestone                                                           | Status                                                                                        |
+| ----- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| P0    | Baseline checks, CSP, command hardening, lockfiles and test harness | Implemented; build and native x64 automation pass; remaining baseline/hardware checks open    |
+| P1    | Embedded service window and touch-visible Home path                 | Native x64 proof of concept passes automation; physical Surface/ARM64 runtime acceptance OPEN |
+| P2–P6 | Discovery, integrations, polish, broader security/release           | NOT STARTED                                                                                   |
 
 ## Changed files
 
@@ -49,10 +50,10 @@ Frontend: index.html; browser.html; package.json; package-lock.json; vite.config
 
 Native: rust-toolchain.toml; src-tauri/Cargo.toml; src-tauri/Cargo.lock; src-tauri/build.rs; src-tauri/tauri.conf.json; src-tauri/capabilities/default.json; src-tauri/capabilities/browser-controls.json; src-tauri/src/lib.rs; src-tauri/src/security.rs; src-tauri/src/policy.rs; src-tauri/src/launch.rs; src-tauri/src/browser.rs.
 
-Tests/CI: tests/targets.test.js; tests/shortcuts.test.js; tests/routing.test.js; tests/security-config.test.js; tests/ui/home.spec.js; tests/ui/controls.spec.js; tests/ui/csp.spec.js; .github/workflows/windows-build.yml.
+Tests/CI: tests/native-smoke.mjs; tests/targets.test.js; tests/shortcuts.test.js; tests/routing.test.js; tests/security-config.test.js; tests/ui/home.spec.js; tests/ui/controls.spec.js; tests/ui/csp.spec.js; .github/workflows/windows-build.yml.
 
-Handoff: README.md; docs/PROGRESS.md; docs/DECISIONS.md; docs/ARCHITECTURE.md; docs/ACCEPTANCE_TESTS.md; docs/PHASE_1_SPIKE.md. Existing compressed source and touched documentation were formatted when introducing formatting checks. The cinematic layout was preserved.
+Handoff: docs/NATIVE_SMOKE_RESULT.json; README.md; docs/PROGRESS.md; docs/DECISIONS.md; docs/ARCHITECTURE.md; docs/ACCEPTANCE_TESTS.md; docs/PHASE_1_SPIKE.md. Existing compressed source and touched documentation were formatted when introducing formatting checks. The cinematic layout was preserved.
 
 ## Blockers and next checklist item
 
-Install the Windows C++/SDK prerequisites (or obtain passing native CI), then execute the [stable-window spike](PHASE_1_SPIKE.md) on x64 and ARM64 devices. Record native compile/typechecking results before calling the code buildable. Test visible Home while the remote site is focused/fullscreen, rotation/DPI/task switching, ten reopen cycles and every remote IPC denial. Update the acceptance matrix with actual hardware/build evidence. Only if the stable owned-window approach fails these native tests should a documented child-webview experiment be considered. Do not start Phase 2.
+Run the [hardware spike](PHASE_1_SPIKE.md) on physical x64 and ARM64 Surfaces: Home must remain touch-visible with the remote page focused/fullscreen, across rotation/DPI/task switching. Confirm provider login/playback and a self-hosted Jellyfin instance independently; test native app/media launch and installer install/uninstall. ARM64 currently has compile/unit/packaging evidence only. The local build machine also needs Visual Studio C++/SDK tools for direct compilation. Do not label Phase 1 physically accepted or start Phase 2 from the existing automation alone.

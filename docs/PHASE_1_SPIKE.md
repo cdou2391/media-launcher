@@ -1,6 +1,6 @@
 # Phase 1 stable-window proof of concept
 
-Date: 2026-10-20. Status: code and browser-only checks implemented; native acceptance NOT RUN. Do not mark Phase 1 complete from these results.
+Date: 2026-10-20. Status: native x64 automation PASS on source 8569144; physical Surface and ARM64 runtime acceptance NOT RUN. Do not mark Phase 1 complete from these results.
 
 ## Decision and evidence
 
@@ -23,7 +23,7 @@ There is no global always-on-top window, iframe wrapper, remote script injection
 8. Confirm Netflix/Prime/Disney+ choose External in Auto. Check the reason and tile label. Explicit Internal is a user override with an unverified compatibility warning; it does not circumvent DRM.
 9. Add a favorite under v1 (or use a controlled test profile), run the new version and confirm v2, custom targets, favorites and original v1 backup survive restart. Test HTTP consent, corrupted storage and an empty collection using isolated test profiles; do not corrupt personal settings.
 
-## Native IPC negative test (required; NOT RUN)
+## Native IPC negative test (x64 automation PASS; physical repeat required)
 
 With a harmless controlled remote HTTPS page open in service, use that remote webview's developer console on a debug build. Do not run these checks from the local Home or toolbar console. If no IPC bridge is exposed, record that observation. If **TAURI_INTERNALS**.invoke exists, attempt each command with harmless arguments and record the actual denial:
 
@@ -65,3 +65,7 @@ Every call must fail at permission/caller authorization, not merely at argument 
 ## Remaining platform limitations
 
 Back/forward history controls are not implemented: there is no cross-origin JavaScript injection or assumed DOM access. Retry navigates to the original approved URL. Popups/downloads are denied; the explicit external fallback also uses the original approved URL, never a remote-provided popup or OAuth callback. WebView2 error-page and renderer-crash reporting is not fully instrumented; closing/reopening and the independent toolbar are the recovery path. Shared WebView2 website session behavior needs privacy/login testing. There is no claim of isolated per-provider cookie profiles.
+
+## Recorded native result
+
+The corrected source builds for both targets and passes five Rust tests per architecture in [CI](https://github.com/cdou2391/media-launcher/actions/runs/39412058478). On Windows x64 build 10.0.26200 / WebView2 155.0.4283.62, npm run test:native passes real HTTPS rendering, migration and process-restart persistence, eight remote ACL denials, popup/local-origin blocking, original-target Retry, ten Home cycles, both close-request paths and Exit. See [machine-readable evidence](NATIVE_SMOKE_RESULT.json). This uses CDP against real WebView2; it does not measure physical native window z-order, touch, DPI/rotation, provider playback or ARM64 runtime.

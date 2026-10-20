@@ -96,3 +96,19 @@ These checks ran on a Windows x64 host in Node/headless Chrome; they are not nat
 | CI, installers and provider playback                     | NOT VERIFIED                                                                              |
 
 Record actual native/device results using [the spike procedure](PHASE_1_SPIKE.md). No test in this delivery establishes Netflix, Prime Video, Disney+, Spotify, YouTube or Jellyfin playback compatibility.
+
+## Native x64 follow-up — source 8569144
+
+[Exact evidence](NATIVE_SMOKE_RESULT.json) and [successful dual-architecture CI](https://github.com/cdou2391/media-launcher/actions/runs/39412058478). This section supersedes earlier NOT RUN entries only for the precise automated cases below; physical device rows remain unchanged.
+
+| Case                                                                             | New actual evidence                                                                                                                   |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| P0-02 / P1-12                                                                    | PASS in real WebView2: v1 migration plus favorite, color, mark and accent survive full native process restart                         |
+| P0-06                                                                            | PASS native Exit command closes x64 app                                                                                               |
+| P0-07 / P1-10                                                                    | PASS native untrusted fixture: all eight tested IPC calls rejected by ACL                                                             |
+| P1-01                                                                            | PASS ordinary HTTPS document inside AURA, HTTP 200 and rendered content                                                               |
+| P1-02 / P1-13                                                                    | PASS automated Home restoration/focus through ten native cycles and both close-request paths; physical visibility/touch still NOT RUN |
+| P1-07                                                                            | PASS popup/local-origin block warnings and Retry; no provider error or certificate bypass                                             |
+| P1-11                                                                            | PASS JS checks, five native Rust tests per architecture and native local-origin block                                                 |
+| CI and packaging                                                                 | PASS separate release NSIS installers for x64 and ARM64                                                                               |
+| Physical x64/ARM64, ARM64 WebView2 runtime, provider playback, install/uninstall | NOT RUN                                                                                                                               |
