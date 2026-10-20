@@ -84,11 +84,16 @@ p {
   height: 100vh;
   height: 100dvh;
   z-index: 3;
-  padding: 30px 0;
+  padding: 20px 0;
 }
 .brand {
   background: none;
   color: #f3eee3;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
 }
 .brand-icon {
   display: flex;
@@ -104,16 +109,20 @@ p {
   padding-right: 4px;
 }
 .rail-nav {
-  margin-top: 100px;
+  margin-top: 24px;
   display: grid;
-  gap: 17px;
+  gap: 8px;
+  flex-shrink: 0;
 }
 .rail-bottom {
   margin-top: auto;
+  padding-top: 12px;
+  flex-shrink: 0;
 }
 .rail-link {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
   color: #677687;
   background: transparent;
   border-radius: 15px;
@@ -127,6 +136,106 @@ p {
 .glyph {
   font-size: 27px;
   line-height: 1;
+}
+.rail-favorites {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.rail-favorites-label {
+  color: var(--muted);
+  text-align: center;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+.rail-favorite-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #344356 transparent;
+  padding: 4px 6px;
+}
+.rail-favorite {
+  position: relative;
+  flex-shrink: 0;
+  width: min(64px, 100%);
+  min-height: 62px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 4px;
+  color: #a5b2c2;
+  background: transparent;
+  border-radius: 12px;
+}
+.rail-favorite-mark {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.13);
+  font-size: 20px;
+  font-weight: 600;
+}
+.rail-favorite-mark.wordmark {
+  font-size: 13px;
+}
+.rail-favorite-name {
+  max-width: 100%;
+  font-size: 9px;
+  line-height: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rail-favorite:hover,
+.rail-favorite[aria-current="true"] {
+  background: #1c2a3c;
+  color: var(--accent);
+}
+.rail-favorite[aria-current="true"] .rail-favorite-mark {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.rail-favorite:focus-visible {
+  outline-offset: 0;
+}
+.rail-favorites-toggle {
+  display: none;
+}
+@media (max-height: 650px) {
+  .rail {
+    padding: 10px 0;
+  }
+  .rail-nav {
+    margin-top: 10px;
+    gap: 6px;
+  }
+  .rail-favorites {
+    margin-top: 12px;
+    padding-top: 10px;
+  }
+  .rail-bottom {
+    padding-top: 8px;
+  }
 }
 .main {
   flex: 1;
@@ -771,9 +880,6 @@ p {
     width: 68px;
     flex-basis: 68px;
   }
-  .rail-nav {
-    margin-top: 65px;
-  }
   .hero-mark {
     display: block;
     left: 26px;
@@ -811,6 +917,45 @@ p {
   }
   .rail-bottom {
     margin: 0;
+    padding-top: 0;
+    display: flex;
+    gap: 4px;
+  }
+  .rail-favorites-toggle {
+    display: block;
+  }
+  .rail-favorites {
+    position: absolute;
+    bottom: 74px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    display: none;
+    max-height: min(60dvh, 380px);
+    margin: 0;
+    padding: 14px 10px;
+    background: #101a28;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  }
+  .rail.favorites-open .rail-favorites {
+    display: flex;
+  }
+  .rail-favorites-label {
+    font-size: 10px;
+  }
+  .rail-favorite-list {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .rail-favorite {
+    width: 100%;
+    min-height: 70px;
+  }
+  .rail-favorite-name {
+    font-size: 10px;
   }
   .brand-icon {
     width: 39px;
@@ -1072,10 +1217,6 @@ body.browsing {
 .browsing .rail {
   width: 90px;
   flex: 0 0 90px;
-  padding: 24px 0;
-}
-.browsing .rail-nav {
-  margin-top: clamp(24px, 10vh, 100px);
 }
 .browsing .main > :not(#browser-workspace) {
   display: none;

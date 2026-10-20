@@ -4,6 +4,18 @@
 
 Phase 0 safeguards and Phase 1 application code are implemented. Both architectures build and pass Rust tests in CI; the x64 package passes real WebView2 automation. Phase exit gates remain OPEN for physical touch/fullscreen/DPI/rotation, ARM64 runtime, provider login/playback and remaining baseline local-file/app launch checks. No Phase 2+ feature was added.
 
+## Favorites in the sidebar - implemented, native build pending
+
+Added a separate Favorites group between primary navigation and Settings. Each shortcut reuses its saved color/mark with a small visible name, accessible full name and tooltip. The list scrolls independently; primary navigation and Settings stay available in short windows. Empty favorites hide the group. Phone previews use a star button opening a labeled panel above the bottom navigation, with Escape/outside-click dismissal. Search does not filter the rail; saved stars and edits update it immediately without changing the v2 schema. An unchanged list keeps its DOM/focus/scroll position.
+
+Selecting another favorite awaits a successful native service close before launching through the existing routing/security checks. Busy switches are serialized; selecting the active internal favorite preserves that session. Native status sets the active highlight. Home events check native state and local entry generation so an old close event cannot hide a newly opened favorite. No remote capability or Rust command changes were needed.
+
+**Exact changed files:** index.html; src/main.js; src/style.css; src/components/favorites-rail.js (new); tests/ui/favorites-rail.spec.js (new); tests/native-smoke.mjs; README.md; docs/ARCHITECTURE.md; docs/ACCEPTANCE_TESTS.md; docs/PROGRESS.md.
+
+**Actual checks so far:** lint/format, 22 Node/config tests and production Vite build PASS. All 20 Chrome-preview tests PASS; focused favorites tests also PASS after preserving unchanged lists. Screenshots inspected at 1400px desktop, 620 × 470 and 360px phone widths. Browser tests cover sync/persistence, overflow, phone controls, active reselect, failed close, external routing and a deliberately delayed Home event. A fixture initially reseeded its favorites on every reload; it was corrected to seed only absent storage before verifying an intentionally empty list. The native suite now exercises four real favorite switches and restart persistence; a new Windows build/native run is pending.
+
+**Next:** build/test both architectures, verify native x64 switching, then publish the next GitHub preview per the standing instruction. Physical Surface touch/DPI/rotation and ARM64 runtime remain open.
+
 ## Standing build-to-release delivery instruction
 
 On 2026-10-21 the user requested that every future build be pushed and published as the next GitHub release. Recorded the ongoing authorization and exact build/tag/checksum/download verification workflow in AGENTS.md, with a README summary. This applies to successful Windows executable/installer builds. Documentation and frontend checks alone do not create a new binary release. No app code or binaries changed for this instruction; Markdown formatting and Git whitespace checks are the relevant validation. Next successful Windows build should use the next available preview version and return its release/direct EXE links.

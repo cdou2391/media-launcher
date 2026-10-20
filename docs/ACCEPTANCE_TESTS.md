@@ -4,6 +4,8 @@ Record PASS / FAIL / BLOCKED / NOT RUN, build commit/hash, exact hardware/archit
 
 ## P0 — Functional baseline
 
+Sidebar favorites follow-up (2026-10-21): Chrome preview checks cover star/edit/restart synchronization, search independence, scrollable lists at 620 × 470 with navigation reachable, phone panel geometry/keyboard dismissal, active-session preservation, safe switching despite a delayed Home event, close-failure handling and external-mode routing (mock native). Native service switching, active highlight and process-restart persistence require the new packaged test run; browser results are not native evidence.
+
 Compact browser controls follow-up (2026-10-21): browser tests PASS the 56px header, 44px icon target, no visible URL/status paragraph or duplicate Home/External buttons, bounded refresh IPC, and sidebar return at the 620px minimum width. The [exact x64 EXE](COMPACT_BAR_NATIVE_RESULT.json) separately passes fourteen native check statements including actual 56px reserved site bounds, icon-only refresh, sidebar Home through repeated sessions/fullscreen, security and usage. [CI source 3449214](https://github.com/cdou2391/media-launcher/actions/runs/39505309257) builds both architectures and passes their Rust/frontend checks. Physical Surface touch/DPI/rotation and ARM64 runtime remain NOT RUN.
 
 | Test                               | Expected result                                       | Status                                     |

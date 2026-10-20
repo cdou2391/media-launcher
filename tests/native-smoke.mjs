@@ -190,6 +190,91 @@ try {
   result.checks.push(
     "Native WebView2 v1 migration preserves favorite, color, mark and accent across renderer reload",
   );
+  await main.evaluate((target) => {
+    const data = JSON.parse(localStorage.getItem("aura-shortcuts-v2"));
+    for (const suffix of ["one", "two"])
+      data.shortcuts.push({
+        id: `favorite-${suffix}`,
+        title: `Favorite ${suffix}`,
+        target: suffix === "one" ? target : `${target}/second`,
+        kind: "website",
+        category: "other",
+        favorite: true,
+        color: "#284b69",
+        mark: suffix === "one" ? "F1" : "F2",
+        launchMode: "internal",
+        allowHttp: true,
+      });
+    localStorage.setItem("aura-shortcuts-v2", JSON.stringify(data));
+  }, fixtureUrl);
+  await main.reload();
+  await main
+    .locator('.rail-favorite[data-shortcut-id="favorite-one"]')
+    .waitFor();
+  let favoriteRemote;
+  for (const suffix of ["one", "two", "one", "two"]) {
+    const old = favoriteRemote;
+    await main
+      .locator(`.rail-favorite[data-shortcut-id="favorite-${suffix}"]`)
+      .click();
+    if (old)
+      await waitFor(() => old.isClosed(), "favorite closes previous service");
+    favoriteRemote = await waitFor(
+      () =>
+        context
+          .pages()
+          .find((page) => page !== main && page.url().startsWith(fixtureUrl)),
+      "favorite opens controlled website",
+    );
+    await favoriteRemote.locator("h1").waitFor();
+    await waitFor(
+      async () =>
+        (await main
+          .locator(`.rail-favorite[data-shortcut-id="favorite-${suffix}"]`)
+          .getAttribute("aria-current")) === "true",
+      "active favorite highlight",
+    );
+    await pause(150);
+    assert.ok(await main.locator("body.browsing").count());
+    assert.equal(context.pages().length, 2);
+    assert.equal(
+      (
+        await main.evaluate(() =>
+          window.__TAURI_INTERNALS__.invoke("browser_status"),
+        )
+      ).shortcutId,
+      `favorite-${suffix}`,
+    );
+  }
+  const favoriteSession = await main.evaluate(() =>
+    window.__TAURI_INTERNALS__.invoke("browser_status"),
+  );
+  await main.locator('.rail-favorite[data-shortcut-id="favorite-two"]').click();
+  await pause(150);
+  assert.equal(
+    (
+      await main.evaluate(() =>
+        window.__TAURI_INTERNALS__.invoke("browser_status"),
+      )
+    ).sessionId,
+    favoriteSession.sessionId,
+  );
+  assert.ok(!favoriteRemote.isClosed());
+  await main
+    .locator(".rail")
+    .screenshot({ path: path.join(testFolder, "favorites-rail.png") });
+  await main.locator('.rail-link[data-view="home"]').click();
+  await waitFor(
+    () => favoriteRemote.isClosed(),
+    "favorite session returns Home",
+  );
+  assert.equal(
+    await main.locator('.rail-favorite[aria-current="true"]').count(),
+    0,
+  );
+  result.checks.push(
+    "Sidebar favorites open and switch real native services, highlight the active shortcut, and preserve the active session when reselected",
+  );
   const open = async (target = fixtureUrl) => {
     await main.evaluate(
       ({ target }) =>
@@ -603,6 +688,16 @@ try {
   assert.equal(persisted.shortcut.color, "#123456");
   assert.equal(persisted.shortcut.mark, "M");
   assert.equal(persisted.accent, "blue");
+  for (const suffix of ["one", "two"]) {
+    assert.ok(
+      await restarted
+        .locator(`.rail-favorite[data-shortcut-id="favorite-${suffix}"]`)
+        .isVisible(),
+    );
+  }
+  result.checks.push(
+    "Sidebar favorite shortcuts and labels survive a full native process restart",
+  );
   const persistedUsage = await restarted.evaluate(() =>
     JSON.parse(localStorage.getItem("aura-usage-v1")),
   );

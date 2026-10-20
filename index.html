@@ -41,7 +41,25 @@
             <span class="glyph">▤</span>
           </button>
         </div>
+        <nav
+          id="rail-favorites"
+          class="rail-favorites hidden"
+          aria-label="Favorite applications"
+        >
+          <h2 class="rail-favorites-label">Favorites</h2>
+          <div id="rail-favorite-list" class="rail-favorite-list"></div>
+        </nav>
         <div class="rail-bottom">
+          <button
+            id="rail-favorites-toggle"
+            class="rail-link rail-favorites-toggle hidden"
+            aria-label="Favorite applications"
+            aria-controls="rail-favorites"
+            aria-expanded="false"
+            title="Favorite applications"
+          >
+            <span class="glyph" aria-hidden="true">★</span>
+          </button>
           <button
             class="rail-link"
             data-view="settings"

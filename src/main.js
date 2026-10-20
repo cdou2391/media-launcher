@@ -10,6 +10,7 @@ import {
 } from "./services/shortcuts.js";
 import { launchRoute, routeLabel } from "./services/launch-router.js";
 import { setupUsage } from "./components/usage-panel.js";
+import { setupFavoritesRail } from "./components/favorites-rail.js";
 
 const ACCENT_KEY = "aura-accent-v1";
 let storage;
@@ -28,6 +29,8 @@ let homeNavigationReady = !native;
 let browsing = false;
 let browserContext = null;
 let browserActionBusy = false;
+let favoriteLaunchBusy = false;
+let browserEntry = 0;
 let returnView = "home";
 let view = "home";
 let query = "";
@@ -41,6 +44,7 @@ const usage = setupUsage({
 });
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
+const favoritesRail = setupFavoritesRail({ onLaunch: launchFavorite });
 const accent = readPreference(storage, ACCENT_KEY, "sand");
 document.documentElement.dataset.accent = ["sand", "blue", "green"].includes(
   accent,
@@ -128,6 +132,19 @@ async function launch(app, mode) {
     launchFeedback(shortcut, String(error));
   } finally {
     launching = false;
+  }
+}
+async function launchFavorite(app) {
+  if (favoriteLaunchBusy || launching || browserActionBusy) return;
+  if (browsing && browserContext?.shortcutId === app.id) return;
+  favoriteLaunchBusy = true;
+  favoritesRail.setBusy(true);
+  try {
+    if (browsing && !(await browserAction("home"))) return;
+    await launch(app);
+  } finally {
+    favoriteLaunchBusy = false;
+    favoritesRail.setBusy(false);
   }
 }
 $("#fallback-home").addEventListener("click", () => {
@@ -235,6 +252,7 @@ function tile(app, showControls = false) {
   return button;
 }
 function render() {
+  favoritesRail.render(apps);
   const fav = $("#favorites");
   const all = $("#all-apps");
   fav.replaceChildren();
@@ -289,6 +307,7 @@ function setView(next) {
 }
 function leaveBrowser() {
   browserContext = null;
+  favoritesRail.select(null);
   usage.contextChanged();
   browsing = false;
   document.body.classList.remove("browsing");
@@ -312,6 +331,7 @@ async function refreshBrowser() {
     }
     if (browserContext?.sessionId !== current.sessionId) usage.contextChanged();
     browserContext = current;
+    favoritesRail.select(current.shortcutId);
     $("#service-title").textContent = current.title;
     browserStatus(current.message, ["blocked", "slow"].includes(current.phase));
   } catch {
@@ -322,6 +342,7 @@ async function refreshBrowser() {
   }
 }
 function enterBrowser() {
+  browserEntry++;
   browsing = true;
   returnView = "home";
   document.body.classList.add("browsing");
@@ -332,7 +353,7 @@ function enterBrowser() {
   refreshBrowser();
 }
 async function browserAction(action, destination = "home") {
-  if (!browsing || browserActionBusy) return;
+  if (!browsing || browserActionBusy) return false;
   browserActionBusy = true;
   returnView = destination;
   $("#browser-retry").disabled = true;
@@ -343,11 +364,13 @@ async function browserAction(action, destination = "home") {
       setView(destination);
       if (destination === "home") $("#hero-browse").focus();
     } else await refreshBrowser();
+    return true;
   } catch (error) {
     browserStatus(
       `Unable to ${action === "retry" ? "refresh" : "return"}: ${String(error)}`,
       true,
     );
+    return false;
   } finally {
     browserActionBusy = false;
     $("#browser-retry").disabled = false;
@@ -357,6 +380,7 @@ $("#browser-retry").addEventListener("click", () => browserAction("retry"));
 setInterval(refreshBrowser, 1000);
 $$("[data-view]").forEach((b) =>
   b.addEventListener("click", () => {
+    favoritesRail.close();
     if (browsing) browserAction("home", b.dataset.view);
     else setView(b.dataset.view);
   }),
@@ -507,6 +531,11 @@ updateClock();
 setInterval(updateClock, 15000);
 // Remote/gamepad-like directional keyboard navigation across visible controls.
 document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && favoritesRail.isOpen()) {
+    favoritesRail.close({ restoreFocus: true });
+    e.preventDefault();
+    return;
+  }
   if (browsing && e.key === "Escape") {
     browserAction("home");
     return;
@@ -599,7 +628,15 @@ render();
 storageNotice(repository.notice);
 if (native) {
   Promise.all([
-    listen("aura-home", () => {
+    listen("aura-home", async () => {
+      const entry = browserEntry;
+      // A favorite can open a new session before an old Home event arrives.
+      // Never let that delayed event hide the newly opened browser workspace.
+      try {
+        if ((await invoke("browser_status")) || entry !== browserEntry) return;
+      } catch {
+        if (entry !== browserEntry) return;
+      }
       leaveBrowser();
       setView(returnView);
       if (returnView === "home") $("#hero-browse").focus();

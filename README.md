@@ -15,6 +15,10 @@ Phase 0 safeguards and Phase 1 application code are implemented. **Compatible we
 
 The browser preview explains that internal/native windows require the Windows app and offers an explicit external-tab fallback. It does not simulate successful native browsing.
 
+## Favorites in the sidebar
+
+Favorite shortcuts also appear in a separate sidebar group, using their existing color, symbol and a short name. The list scrolls within the rail so Home and Settings remain reachable in short windows. Favorites stay in sync with stars/edits and do not disappear when searching. The active internal shortcut is highlighted; selecting another favorite closes the previous website before launching through the same Auto/Internal/External policy. Selecting the current site keeps its session intact. Phone-sized previews use a star button and labeled panel above the bottom navigation. No favicon service or new storage schema is needed.
+
 ## Home banner
 
 Download the updated Windows build from [AURA 0.1.0 Preview 2](https://github.com/cdou2391/media-launcher/releases/tag/v0.1.0-preview.2): standalone x64 AURA.exe, separate x64/ARM64 installers, checksums, launch instructions and build validation. It includes the 56px browser bar with only the service name and refresh icon. The preview tag points to the exact tested source commit 3449214; all six uploaded asset digests match the local files. [Compact-bar native evidence](docs/COMPACT_BAR_NATIVE_RESULT.json) records all fourteen native checks passing.
