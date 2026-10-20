@@ -87,3 +87,11 @@ Streaming compatibility requires real hardware tests of login, playback, audio, 
 - Native entrypoint recreates main from config with a trusted-route navigation guard; explicit command ACL and caller checks apply before side effects.
 
 The stable-window approach is implemented as a proof of concept. [Native spike acceptance](PHASE_1_SPIKE.md) remains required; this update does not declare the toolbar/fullscreen or provider experience verified.
+
+## ADR-008 sidebar experiment (supersedes the stable-window implementation above)
+
+The stable spike's separate controls visibly obscured the user's site. A single `service` child Webview now shares the main native Window with the trusted `main` Webview. Native bounds reserve the 90px existing rail and 128px local browser header. No floating window, iframe or remote script injection is used. The Cargo feature `embedded-browser` explicitly enables the unstable child API against pinned Tauri 2.12.4. Permission scopes use `webviews: ["main"]` with no `windows` entry, and native commands validate the actual invoking Webview's label/URL plus containing window. A remote child never gains the host window's privileges. Browser operations serialize, close only the child, and restore the selected AURA view. Physical acceptance remains open.
+
+## Local usage boundary (ADR-009)
+
+The trusted Settings UI keeps versioned aggregate usage under aura-usage-v1, separate from shortcuts. Only IDs/titles, durations, launch counts and last-launch timestamps are retained. The trusted-main-only usage_foreground command returns whether AURA's own HWND equals the Windows foreground window and is not minimized; remote webviews receive no new capability. Browser status exposes only its session generation and optional shortcut identity to trusted callers for attribution. One-second samples credit matching foreground intervals; sleep gaps and clock discontinuities are dropped. Explicit native acknowledgement precedes launch counting. External app/tab durations are unavailable. Local storage errors preserve session totals, corrupt/future data pauses tracking without overwrite, and user-confirmed clear affects only usage.

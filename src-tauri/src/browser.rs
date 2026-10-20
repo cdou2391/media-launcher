@@ -7,13 +7,14 @@ use std::sync::{
 use std::time::{Duration, Instant};
 use tauri::{
     webview::{NewWindowResponse, PageLoadEvent},
-    AppHandle, Emitter, LogicalPosition, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
-    WindowEvent,
+    AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, Webview, WebviewUrl,
 };
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BrowserStatus {
+    pub session_id: u64,
+    pub shortcut_id: Option<String>,
     pub title: String,
     pub origin: String,
     pub phase: String,
@@ -74,6 +75,7 @@ struct Session {
 pub struct BrowserState {
     session: Mutex<Option<Session>>,
     next: AtomicU64,
+    operation: tauri::async_runtime::Mutex<()>,
 }
 
 fn update(app: &AppHandle, id: u64, phase: &str, message: &str, origin: Option<String>) {
@@ -91,75 +93,80 @@ fn update(app: &AppHandle, id: u64, phase: &str, message: &str, origin: Option<S
     }
 }
 
-// Owned native window: Windows keeps this above the remote service, without a
-// system-wide always-on-top overlay. Re-anchor after rotation, move or DPI change.
-fn position_controls(app: &AppHandle) -> Result<(), String> {
-    let service = app
-        .get_webview_window("service")
-        .ok_or("Service window is unavailable")?;
-    let controls = app
-        .get_webview_window("browser-controls")
-        .ok_or("Home controls are unavailable")?;
-    let monitor = service
-        .current_monitor()
+// These logical insets match the browser workspace in src/style.css. Native
+// bounds reserve the rail and toolbar; remote HTML cannot draw over either.
+const RAIL_WIDTH: f64 = 90.0;
+const TOOLBAR_HEIGHT: f64 = 128.0;
+
+fn service_size(width: f64, height: f64) -> LogicalSize<f64> {
+    LogicalSize::new(
+        (width - RAIL_WIDTH).max(1.0),
+        (height - TOOLBAR_HEIGHT).max(1.0),
+    )
+}
+
+pub fn resize_service(app: &AppHandle) -> Result<(), String> {
+    let Some(service) = app.get_webview("service") else {
+        return Ok(());
+    };
+    let main = app.get_window("main").ok_or("AURA Home is unavailable")?;
+    let scale = main.scale_factor().map_err(|e| e.to_string())?;
+    let size = main
+        .inner_size()
         .map_err(|e| e.to_string())?
-        .ok_or("No active monitor")?;
-    let scale = monitor.scale_factor();
-    let work = monitor.work_area();
-    let width = (f64::from(work.size.width) / scale - 32.0).clamp(280.0, 760.0);
-    controls
-        .set_size(tauri::LogicalSize::new(
-            width,
-            if width < 470.0 { 264.0 } else { 188.0 },
-        ))
-        .map_err(|e| e.to_string())?;
-    controls
-        .set_position(LogicalPosition::new(
-            f64::from(work.position.x) / scale + 16.0,
-            f64::from(work.position.y) / scale + 16.0,
-        ))
-        .map_err(|e| e.to_string())?;
-    Ok(())
+        .to_logical::<f64>(scale);
+    service
+        .set_bounds(tauri::Rect {
+            position: LogicalPosition::new(RAIL_WIDTH, TOOLBAR_HEIGHT).into(),
+            size: service_size(size.width, size.height).into(),
+        })
+        .map_err(|e| e.to_string())
 }
 
 fn finish(app: &AppHandle, expected_id: Option<u64>) -> Result<(), String> {
     let state = app.state::<BrowserState>();
     {
-        let mut guard = state
+        let guard = state
             .session
             .lock()
             .map_err(|_| "Browser state is unavailable")?;
         if expected_id.is_some_and(|id| guard.as_ref().is_none_or(|s| s.id != id)) {
             return Ok(());
         }
-        *guard = None;
     }
-    let mut failure = None;
-    for label in ["browser-controls", "service"] {
-        if let Some(window) = app.get_webview_window(label) {
-            if let Err(error) = window.destroy() {
-                failure = Some(error.to_string());
-            }
-        }
+    // Close only the remote child, never its shared AURA window. Retain the
+    // session if close fails so Home/Retry can recover instead of orphaning it.
+    if let Some(service) = app.get_webview("service") {
+        service.close().map_err(|e| e.to_string())?;
     }
-    if let Some(main) = app.get_webview_window("main") {
+    *state
+        .session
+        .lock()
+        .map_err(|_| "Browser state is unavailable")? = None;
+    if let Some(main) = app.get_window("main") {
         let _ = app.emit_to("main", "aura-home", ());
         main.show().map_err(|e| e.to_string())?;
         main.unminimize().map_err(|e| e.to_string())?;
         main.set_focus().map_err(|e| e.to_string())?;
     }
-    failure.map_or(Ok(()), Err)
+    if let Some(main) = app.get_webview("main") {
+        main.set_focus().map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 #[tauri::command]
 pub async fn open_internal(
-    window: WebviewWindow,
+    window: Webview,
     app: AppHandle,
     target: String,
     title: String,
     allow_http: bool,
+    shortcut_id: Option<String>,
 ) -> Result<(), String> {
     security::authorize(&window, true)?;
+    let state = app.state::<BrowserState>();
+    let _operation = state.operation.lock().await;
     let url = security::website_url(&target, allow_http)?;
     if title.is_empty() || title.chars().count() > 48 || title.chars().any(char::is_control) {
         return Err("Invalid service name".into());
@@ -181,6 +188,10 @@ pub async fn open_internal(
             allow_http,
             changed: Instant::now(),
             status: BrowserStatus {
+                session_id: id,
+                shortcut_id: shortcut_id.filter(|id| {
+                    !id.is_empty() && id.len() <= 128 && !id.chars().any(char::is_control)
+                }),
                 title: title.clone(),
                 origin: url.origin().ascii_serialization(),
                 phase: "loading".into(),
@@ -188,7 +199,7 @@ pub async fn open_internal(
             },
         });
     }
-    let result = create_windows(&app, id, url, &title, allow_http);
+    let result = create_view(&app, id, url, allow_http);
     if let Err(error) = result {
         let _ = finish(&app, Some(id));
         return Err(format!(
@@ -198,28 +209,33 @@ pub async fn open_internal(
     Ok(())
 }
 
-fn create_windows(
-    app: &AppHandle,
-    id: u64,
-    url: tauri::Url,
-    title: &str,
-    allow_http: bool,
+#[cfg(not(feature = "embedded-browser"))]
+fn create_view(
+    _app: &AppHandle,
+    _id: u64,
+    _url: tauri::Url,
+    _allow_http: bool,
 ) -> Result<(), String> {
+    Err("This build has internal browsing disabled. Use Open externally".into())
+}
+
+#[cfg(feature = "embedded-browser")]
+fn create_view(app: &AppHandle, id: u64, url: tauri::Url, allow_http: bool) -> Result<(), String> {
+    let main = app.get_window("main").ok_or("AURA Home is unavailable")?;
+    let scale = main.scale_factor().map_err(|e| e.to_string())?;
+    let size = main
+        .inner_size()
+        .map_err(|e| e.to_string())?
+        .to_logical::<f64>(scale);
     let nav_app = app.clone();
     let popup_app = app.clone();
     let load_app = app.clone();
-    let service = WebviewWindowBuilder::new(app, "service", WebviewUrl::External(url))
-        .title(format!("{title} — AURA service"))
-        .inner_size(1100.0, 760.0)
-        .min_inner_size(360.0, 400.0)
-        .decorations(true)
-        .visible(false)
+    let builder = tauri::webview::WebviewBuilder::new("service", WebviewUrl::External(url))
         .disable_drag_drop_handler()
         .on_navigation(move |next| {
             // No local asset, file, custom scheme or privileged origin navigation.
             let allowed = security::website_url(next.as_str(), allow_http).is_ok()
-                && !security::trusted_page("main", next)
-                && !security::trusted_page("browser-controls", next);
+                && !security::trusted_page("main", next);
             if !allowed { update(&nav_app, id, "blocked", "This navigation is blocked. Use Open externally for supported sign-in flows.", None); }
             else { navigation_started(&nav_app, id, next.origin().ascii_serialization()); }
             allowed
@@ -234,69 +250,22 @@ fn create_windows(
                 page_received(&load_app, id, payload.url().origin().ascii_serialization());
             }
         })
-        .build().map_err(|e| e.to_string())?;
-    let controls = WebviewWindowBuilder::new(
-        app,
-        "browser-controls",
-        WebviewUrl::App("browser.html".into()),
+;
+    // Window::add_child must run from this async command, not a UI event handler.
+    main.add_child(
+        builder,
+        LogicalPosition::new(RAIL_WIDTH, TOOLBAR_HEIGHT),
+        service_size(size.width, size.height),
     )
-    .title("AURA — Return to Home")
-    .inner_size(760.0, 188.0)
-    .resizable(false)
-    .maximizable(false)
-    .minimizable(false)
-    .decorations(true)
-    .skip_taskbar(true)
-    .visible(false)
-    .parent(&service)
-    .map_err(|e| e.to_string())?
-    .on_navigation(|next| security::trusted_page("browser-controls", next))
-    .on_new_window(|_, _| NewWindowResponse::Deny)
-    .build()
     .map_err(|e| e.to_string())?;
-    let close_app = app.clone();
-    controls.on_window_event(move |event| {
-        if let WindowEvent::CloseRequested { api, .. } = event {
-            api.prevent_close();
-            let app = close_app.clone();
-            tauri::async_runtime::spawn(async move {
-                let _ = finish(&app, Some(id));
-            });
-        }
-    });
-    let event_app = app.clone();
-    service.on_window_event(move |event| match event {
-        WindowEvent::Destroyed => {
-            let app = event_app.clone();
-            tauri::async_runtime::spawn(async move {
-                let _ = finish(&app, Some(id));
-            });
-        }
-        WindowEvent::Moved(_)
-        | WindowEvent::Resized(_)
-        | WindowEvent::ScaleFactorChanged { .. } => {
-            let _ = position_controls(&event_app);
-        }
-        _ => {}
-    });
-    service.maximize().map_err(|e| e.to_string())?;
-    position_controls(app)?;
-    service.show().map_err(|e| e.to_string())?;
-    controls.show().map_err(|e| e.to_string())?;
-    controls.set_focus().map_err(|e| e.to_string())?;
-    // Hide only after both windows and the return path exist.
-    app.get_webview_window("main")
-        .ok_or("AURA Home is unavailable")?
-        .hide()
+    app.emit_to("main", "aura-browser", ())
         .map_err(|e| e.to_string())?;
+
     Ok(())
 }
 
 #[tauri::command]
-pub fn browser_status(
-    window: WebviewWindow,
-    app: AppHandle,
-) -> Result<Option<BrowserStatus>, String> {
+pub fn browser_status(window: Webview, app: AppHandle) -> Result<Option<BrowserStatus>, String> {
     security::authorize(&window, false)?;
     let state = app.state::<BrowserState>();
     let mut guard = state
@@ -316,14 +285,18 @@ pub fn browser_status(
 }
 
 #[tauri::command]
-pub async fn browser_home(window: WebviewWindow, app: AppHandle) -> Result<(), String> {
+pub async fn browser_home(window: Webview, app: AppHandle) -> Result<(), String> {
     security::authorize(&window, false)?;
+    let state = app.state::<BrowserState>();
+    let _operation = state.operation.lock().await;
     finish(&app, None)
 }
 
 #[tauri::command]
-pub async fn browser_retry(window: WebviewWindow, app: AppHandle) -> Result<(), String> {
+pub async fn browser_retry(window: Webview, app: AppHandle) -> Result<(), String> {
     security::authorize(&window, false)?;
+    let state = app.state::<BrowserState>();
+    let _operation = state.operation.lock().await;
     let (id, target, allow_http) = {
         let state = app.state::<BrowserState>();
         let guard = state
@@ -341,15 +314,17 @@ pub async fn browser_retry(window: WebviewWindow, app: AppHandle) -> Result<(), 
         "Retrying the original shortcut.",
         Some(url.origin().ascii_serialization()),
     );
-    app.get_webview_window("service")
+    app.get_webview("service")
         .ok_or("Service closed. Return Home and reopen the shortcut.")?
         .navigate(url)
         .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn browser_external(window: WebviewWindow, app: AppHandle) -> Result<(), String> {
+pub async fn browser_external(window: Webview, app: AppHandle) -> Result<(), String> {
     security::authorize(&window, false)?;
+    let state = app.state::<BrowserState>();
+    let _operation = state.operation.lock().await;
     let (target, allow_http) = {
         let state = app.state::<BrowserState>();
         let guard = state
@@ -369,8 +344,20 @@ mod tests {
     use super::*;
 
     #[test]
+    fn site_bounds_reserve_navigation_at_portrait_and_landscape_sizes() {
+        for (width, height) in [(620.0, 470.0), (900.0, 1400.0), (1400.0, 900.0)] {
+            let site = service_size(width, height);
+            assert_eq!(site.width + RAIL_WIDTH, width);
+            assert_eq!(site.height + TOOLBAR_HEIGHT, height);
+            assert!(site.width > 0.0 && site.height > 0.0);
+        }
+    }
+
+    #[test]
     fn cancelled_load_completion_keeps_navigation_or_popup_warning() {
         let mut status = BrowserStatus {
+            session_id: 1,
+            shortcut_id: None,
             title: "Fixture".into(),
             origin: "https://example.com".into(),
             phase: "blocked".into(),

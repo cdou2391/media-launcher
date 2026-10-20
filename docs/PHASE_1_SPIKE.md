@@ -1,4 +1,21 @@
-# Phase 1 stable-window proof of concept
+# Phase 1 browser navigation experiments
+
+## Current sidebar/child-webview spike � ADR-008
+
+The stable-window spike below is retained as historical evidence. The user's actual YouTube screenshot showed its floating panel covering the site. The requested replacement retains the existing AURA rail in the main native window, with an isolated remote child bounded to the right of 90px and below a 128px local header. It explicitly enables Tauri's unstable child API through the `embedded-browser` Cargo feature, pinned to Tauri 2.12.4. Remote commands remain denied by webview-scoped ACL and invoking-webview validation.
+
+1. Build using the README commands or extract the matching CI installer. Record commit, architecture, Windows build, WebView2 version and device scaling.
+2. Launch an ordinary HTTPS shortcut internally. There must be exactly one AURA native window, no floating panel, and a website to the right of the existing rail. Home, Applications, Library and Settings remain visible with at least 44px targets. The local header shows site title/origin, Home, Retry and External.
+3. Tap each sidebar destination while the remote site has focus. It must close only the website, open the chosen AURA view, and preserve settings/favorites. Repeat ten sessions. Verify the heading remains the selected destination after delayed events. The header Home action and Escape while local controls are focused return Home.
+4. Resize the native window, change fullscreen through AURA Settings, move between scaled monitors, rotate the Surface and test 125/200/250% scaling. Check website bounds always reserve the rail/header and page content remains usable. Repeat a website's own video/document fullscreen request; verify the visible rail still receives real touch input. Automated DOM visibility alone cannot establish touch hit-testing across native surfaces.
+5. Verify Retry uses the original approved target; verify External opens that target and restores Home. Check offline/timeout, unsupported sign-in and popup messages. No certificate, web-policy or DRM bypass is provided.
+6. Run `npm run test:native -- "path-to-exe"`. It checks actual child rendering, all sidebar destinations, ten session cycles, original-target Retry, remote IPC denials including attempts to close/change the host or forge a Home event, native bounds during a site fullscreen request, HTTPS, migration and restart persistence. It uses an isolated WebView2 profile and process-only CDP port.
+7. Repeat the negative IPC procedure below from the remote child, including its host-window commands. It must never inherit permissions from sharing the `main` native window. Confirm the sole capability grants `webviews: ["main"]` and no `windows` entry.
+8. Test physical x64 and ARM64 runtime separately, followed by actual YouTube/Jellyfin login/playback and normal installer install/uninstall. Successful CI compilation is not device acceptance.
+
+Current automated evidence: [sidebar result](SIDEBAR_NATIVE_RESULT.json), source 32e0a9c, [dual-architecture CI](https://github.com/cdou2391/media-launcher/actions/runs/39425973205). All tests described in step 6 pass in real x64 WebView2 with normal desktop permissions. Physical input/DPI/rotation and ARM64 runtime remain open. The tool sandbox could not initialize WebView2; the same package passed outside that restriction.
+
+## Historical stable-window proof of concept
 
 Date: 2026-10-20. Status: native x64 automation PASS on source 8569144; physical Surface and ARM64 runtime acceptance NOT RUN. Do not mark Phase 1 complete from these results.
 

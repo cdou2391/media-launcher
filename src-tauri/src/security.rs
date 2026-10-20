@@ -3,7 +3,6 @@ use tauri::Url;
 pub fn trusted_page(label: &str, url: &Url) -> bool {
     let path_ok = match label {
         "main" => matches!(url.path(), "/" | "/index.html"),
-        "browser-controls" => url.path() == "/browser.html",
         _ => false,
     };
     let production = (url.scheme() == "tauri" && url.host_str() == Some("localhost"))
@@ -17,11 +16,12 @@ pub fn trusted_page(label: &str, url: &Url) -> bool {
     path_ok && (production || development) && url.username().is_empty() && url.password().is_none()
 }
 
-pub fn authorize(window: &tauri::WebviewWindow, main_only: bool) -> Result<(), String> {
+pub fn authorize(window: &tauri::Webview, _main_only: bool) -> Result<(), String> {
     let url = window
         .url()
         .map_err(|_| "Unable to verify command caller")?;
-    if !trusted_page(window.label(), &url) || (main_only && window.label() != "main") {
+    // Inspect the invoking webview, never just its shared native window label.
+    if window.window().label() != "main" || !trusted_page(window.label(), &url) {
         return Err("This command is available only to trusted AURA controls".into());
     }
     Ok(())

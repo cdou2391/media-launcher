@@ -8,6 +8,7 @@ fn main() {
             "browser_home",
             "browser_retry",
             "browser_external",
+            "usage_foreground",
         ]),
     ))
     .expect("Failed to build AURA permissions");

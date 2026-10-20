@@ -54,6 +54,26 @@
       </aside>
 
       <main class="main">
+        <section
+          id="browser-workspace"
+          class="hidden"
+          aria-label="Website controls"
+        >
+          <div class="browser-heading">
+            <div class="browser-identity">
+              <strong id="service-title">Website</strong>
+              <span id="service-origin"></span>
+            </div>
+            <div class="browser-actions">
+              <button id="browser-home" class="secondary">⌂ Home</button>
+              <button id="browser-retry" class="secondary">Retry</button>
+              <button id="browser-external" class="secondary">
+                Open externally ↗
+              </button>
+            </div>
+          </div>
+          <p id="browser-status" role="status" aria-live="polite"></p>
+        </section>
         <header class="topbar">
           <div class="breadcrumb">
             <span class="eyebrow">YOUR PERSONAL MEDIA SPACE</span>
@@ -99,10 +119,15 @@
           </p>
           <section id="home-view" class="view active" aria-label="Home">
             <div class="hero">
-              <div class="hero-glow"></div>
-              <div class="hero-rings">
-                <span></span><span></span><span></span>
-              </div>
+              <img
+                class="hero-art"
+                src="/src/assets/aura-entertainment-banner-v1.png"
+                alt=""
+                width="2172"
+                height="724"
+                fetchpriority="high"
+                decoding="async"
+              />
               <div class="hero-copy">
                 <span class="hero-pill"
                   ><span class="dot"></span> YOUR HOME, REIMAGINED</span
@@ -202,6 +227,81 @@
               <p>Customize the way your media home looks and behaves.</p>
             </div>
             <div class="settings-panel">
+              <section class="usage-section" aria-labelledby="usage-heading">
+                <div class="setting-row">
+                  <div>
+                    <h3 id="usage-heading">Usage on this device</h3>
+                    <p>
+                      Track launches and foreground time. History stays on this
+                      device.
+                    </p>
+                  </div>
+                  <label class="usage-toggle"
+                    ><input id="usage-enabled" type="checkbox" /> Track
+                    usage</label
+                  >
+                </div>
+                <p id="usage-state" class="usage-help" role="status"></p>
+                <p id="usage-notice" class="notice hidden" role="status"></p>
+                <div class="usage-summary">
+                  <div>
+                    <strong id="usage-aura">0s</strong
+                    ><span>AURA foreground time</span>
+                  </div>
+                  <div>
+                    <strong id="usage-sites">0s</strong
+                    ><span>Time in websites</span>
+                  </div>
+                  <div>
+                    <strong id="usage-launches">0</strong
+                    ><span>Shortcut launches</span>
+                  </div>
+                </div>
+                <p class="usage-help">
+                  Time includes sites opened inside AURA while its window is in
+                  the foreground. External apps and browser tabs have launch
+                  counts only; their duration is unavailable. Foreground time
+                  does not confirm playback or active attention.
+                </p>
+                <div class="usage-table-wrap">
+                  <table class="usage-table">
+                    <caption>
+                      Usage by shortcut, since tracking began or history was
+                      cleared
+                    </caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">App / shortcut</th>
+                        <th scope="col">Launches</th>
+                        <th scope="col">Time in AURA</th>
+                        <th scope="col">Last launched</th>
+                      </tr>
+                    </thead>
+                    <tbody id="usage-rows"></tbody>
+                  </table>
+                </div>
+                <p id="usage-empty" class="usage-help">
+                  No usage recorded yet. Open a shortcut to get started.
+                </p>
+                <button id="usage-clear" class="outline-action">
+                  Clear usage history
+                </button>
+                <div
+                  id="usage-confirm"
+                  class="usage-confirm hidden"
+                  role="group"
+                  aria-label="Confirm clearing usage history"
+                >
+                  <p>
+                    Clear all usage history? Your shortcuts and preferences will
+                    stay.
+                  </p>
+                  <button id="usage-cancel" class="secondary">Cancel</button>
+                  <button id="usage-clear-confirm" class="outline-action">
+                    Clear all usage history
+                  </button>
+                </div>
+              </section>
               <div class="setting-row">
                 <div>
                   <strong>Accent color</strong>

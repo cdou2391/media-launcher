@@ -26,7 +26,7 @@ const fixture = http.createServer((request, response) => {
   if (request.url === "/") fixtureRequests++;
   response.setHeader("Content-Type", "text/html");
   response.end(
-    '<!doctype html><html><title>Remote isolation fixture</title><body><h1>Remote isolation fixture</h1><button id="popup" onclick="window.open(\'/popup\')">Popup</button><button id="local" onclick="location.href=\'http://tauri.localhost/index.html\'">Local navigation</button></body></html>',
+    '<!doctype html><html><title>Remote isolation fixture</title><body><h1>Remote isolation fixture</h1><button id="fullscreen" onclick="document.documentElement.requestFullscreen()">Fullscreen</button><button id="popup" onclick="window.open(\'/popup\')">Popup</button><button id="local" onclick="location.href=\'http://tauri.localhost/index.html\'">Local navigation</button></body></html>',
   );
 });
 await new Promise((resolve) => fixture.listen(0, "127.0.0.1", resolve));
@@ -37,6 +37,62 @@ const port = portProbe.address().port;
 await new Promise((resolve) => portProbe.close(resolve));
 const testFolder = path.resolve(".tools/native-smoke-" + Date.now());
 fs.mkdirSync(testFolder, { recursive: true });
+const visibilityHelper = path.join(testFolder, "own-window.ps1");
+fs.writeFileSync(
+  visibilityHelper,
+  `param([int]$AuraPid, [string]$ExpectedExe, [int]$Show)
+$ErrorActionPreference = 'Stop'
+$auraProcess = Get-Process -Id $AuraPid
+if ($auraProcess.Path -ne $ExpectedExe) { throw 'Unexpected test process; refusing window operation' }
+$auraProcess.Refresh()
+$auraWindowHandle = $auraProcess.MainWindowHandle
+if ($auraWindowHandle -eq [IntPtr]::Zero) { throw 'Test application has no native window' }
+Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class AuraTestWindow { [DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr hwnd, int show); [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hwnd); }'
+[void][AuraTestWindow]::ShowWindowAsync($auraWindowHandle, $Show)
+for ($attempt = 0; $attempt -lt 40; $attempt++) {
+  $minimized = [AuraTestWindow]::IsIconic($auraWindowHandle)
+  if (($Show -eq 6 -and $minimized) -or ($Show -eq 9 -and -not $minimized)) { exit 0 }
+  Start-Sleep -Milliseconds 50
+}
+throw 'Test window did not reach the requested visible/minimized state'
+`,
+);
+async function ownWindowVisibility(show) {
+  await new Promise((resolve, reject) => {
+    const helper = spawn(
+      "powershell.exe",
+      [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        `& {\n${fs.readFileSync(visibilityHelper, "utf8")}\n} -AuraPid ([int]$env:AURA_SMOKE_PID) -ExpectedExe $env:AURA_SMOKE_EXE -Show ([int]$env:AURA_SMOKE_SHOW)`,
+      ],
+      {
+        windowsHide: true,
+        stdio: "pipe",
+        env: {
+          ...process.env,
+          AURA_SMOKE_PID: String(child.pid),
+          AURA_SMOKE_EXE: executable,
+          AURA_SMOKE_SHOW: String(show),
+        },
+      },
+    );
+    let output = "";
+    helper.stdout.on("data", (data) => {
+      output += data;
+    });
+    helper.stderr.on("data", (data) => {
+      output += data;
+    });
+    helper.on("error", reject);
+    helper.on("exit", (code) =>
+      code === 0 ? resolve() : reject(new Error(output)),
+    );
+    // Parse the complete command as a unit. Do not override execution policy.
+    helper.stdin.end();
+  });
+}
 let child = spawn(executable, [], {
   windowsHide: true,
   stdio: "pipe",
@@ -150,12 +206,19 @@ try {
       () => context.pages().find((page) => page.url().startsWith(target)),
       "remote service window",
     );
-    const toolbar = await waitFor(
-      () =>
-        context.pages().find((page) => page.url().includes("/browser.html")),
-      "owned local toolbar",
-    );
+    const toolbar = main;
+    await main.locator("body.browsing").waitFor();
     await toolbar.locator("#browser-home").waitFor();
+    assert.equal(
+      context.pages().length,
+      2,
+      "Only Home and one remote child should exist; no floating toolbar",
+    );
+    for (const name of ["Home", "All applications", "Library", "Settings"]) {
+      assert.ok(
+        await main.getByRole("button", { name, exact: true }).isVisible(),
+      );
+    }
     if (target === fixtureUrl) await remote.locator("h1").waitFor();
     return { remote, toolbar };
   };
@@ -186,7 +249,11 @@ try {
           ["browser_home", {}],
           ["browser_retry", {}],
           ["browser_external", {}],
+          ["usage_foreground", {}],
           ["plugin:window|close", { label: "main" }],
+          ["plugin:window|set_fullscreen", { label: "main", value: false }],
+          ["plugin:webview|close", { label: "main" }],
+          ["plugin:event|emit", { event: "aura-home", payload: null }],
         ];
         const denied = [];
         for (const [command, args] of cases) {
@@ -232,18 +299,16 @@ try {
       );
       await remote.locator("#popup").waitFor();
       result.checks.push("Retry invokes native original-target navigation");
-      await toolbar.screenshot({ path: path.join(testFolder, "toolbar.png") });
+      await main.screenshot({ path: path.join(testFolder, "workspace.png") });
+      await remote.screenshot({ path: path.join(testFolder, "remote.png") });
     }
     await toolbar
       .locator("#browser-home")
       .click({ noWaitAfter: true })
       .catch((error) => {
-        if (!toolbar.isClosed()) throw error;
+        if (!remote.isClosed()) throw error;
       });
-    await waitFor(
-      () => remote.isClosed() && toolbar.isClosed(),
-      "service/toolbar cleanup",
-    );
+    await waitFor(() => remote.isClosed(), "remote child cleanup");
     await main.locator("#home-view.active").waitFor();
     assert.equal(
       await main
@@ -253,7 +318,7 @@ try {
     );
   }
   result.checks.push(
-    "Ten real native open/Home/close cycles restore Home and keyboard focus",
+    "Ten real native child open/Home/close cycles restore Home and keyboard focus",
   );
   const https = await open("https://example.com");
   try {
@@ -293,27 +358,180 @@ try {
     .locator("#browser-home")
     .click({ noWaitAfter: true })
     .catch((error) => {
-      if (!https.toolbar.isClosed()) throw error;
+      if (!https.remote.isClosed()) throw error;
     });
-  await waitFor(
-    () => https.remote.isClosed() && https.toolbar.isClosed(),
-    "HTTPS service cleanup",
-  );
-  for (const label of ["service", "browser-controls"]) {
-    const windows = await open();
-    await main.evaluate(
-      (label) =>
-        window.__TAURI_INTERNALS__.invoke("plugin:window|close", { label }),
-      label,
+  await waitFor(() => https.remote.isClosed(), "HTTPS service cleanup");
+  for (const destination of ["apps", "library", "settings", "home"]) {
+    const { remote } = await open();
+    await main.locator(`.rail [data-view="${destination}"]`).first().click();
+    await waitFor(() => remote.isClosed(), "sidebar closes remote child");
+    await main.locator(`#${destination}-view.active`).waitFor();
+    await pause(150);
+    assert.ok(
+      await main.locator(`#${destination}-view`).isVisible(),
+      "Late Home event must not overwrite chosen destination",
     );
-    await waitFor(
-      () => windows.remote.isClosed() && windows.toolbar.isClosed(),
-      "native close request cleanup",
-    );
-    await main.locator("#home-view.active").waitFor();
   }
   result.checks.push(
-    "Native close requests for service and toolbar both restore Home",
+    "All four persistent sidebar destinations close the site and navigate to the chosen AURA view",
+  );
+  const fullscreen = await open();
+  const mainSize = await main.evaluate(() => ({
+    width: innerWidth,
+    height: innerHeight,
+  }));
+  const siteSize = await fullscreen.remote.evaluate(() => ({
+    width: innerWidth,
+    height: innerHeight,
+  }));
+  assert.ok(
+    Math.abs(mainSize.width - 90 - siteSize.width) <= 2,
+    "Remote width must reserve the sidebar",
+  );
+  assert.ok(
+    Math.abs(mainSize.height - 128 - siteSize.height) <= 2,
+    "Remote height must reserve the local header",
+  );
+  await fullscreen.remote.locator("#fullscreen").click();
+  await waitFor(
+    () => fullscreen.remote.evaluate(() => Boolean(document.fullscreenElement)),
+    "site fullscreen",
+  );
+  const fullscreenSize = await fullscreen.remote.evaluate(() => ({
+    width: innerWidth,
+    height: innerHeight,
+  }));
+  assert.ok(fullscreenSize.width <= mainSize.width - 88);
+  assert.ok(fullscreenSize.height <= mainSize.height - 126);
+  assert.ok(
+    await main.getByRole("button", { name: "Home", exact: true }).isVisible(),
+  );
+  await fullscreen.remote.evaluate(() => document.exitFullscreen());
+  await main.locator("#browser-home").click();
+  await waitFor(() => fullscreen.remote.isClosed(), "fullscreen site Home");
+  result.checks.push(
+    "Native child bounds reserve the rail/header, including a real site fullscreen request",
+  );
+  await main.evaluate((target) => {
+    const data = JSON.parse(localStorage.getItem("aura-shortcuts-v2"));
+    data.shortcuts.push({
+      id: "usage-fixture",
+      title: "Usage fixture",
+      target,
+      kind: "website",
+      category: "other",
+      favorite: false,
+      launchMode: "internal",
+      allowHttp: true,
+      color: "#123456",
+      mark: "U",
+    });
+    localStorage.setItem("aura-shortcuts-v2", JSON.stringify(data));
+  }, fixtureUrl);
+  await main.reload();
+  const launchUsage = async () => {
+    await main.locator('.rail [data-view="apps"]').click();
+    await main
+      .locator("#all-apps .tile")
+      .filter({ hasText: "Usage fixture" })
+      .click();
+    await main.locator("body.browsing").waitFor();
+    const childPage = await waitFor(
+      () => context.pages().find((page) => page.url().startsWith(fixtureUrl)),
+      "tracked child",
+    );
+    await childPage.locator("h1").click();
+    assert.equal(await childPage.evaluate(() => document.hasFocus()), true);
+  };
+  await launchUsage();
+  const nativeUsageContext = await main.evaluate(() =>
+    window.__TAURI_INTERNALS__.invoke("browser_status"),
+  );
+  assert.equal(nativeUsageContext.shortcutId, "usage-fixture");
+  assert.ok(nativeUsageContext.sessionId > 0);
+  assert.equal(
+    await main.evaluate(() =>
+      window.__TAURI_INTERNALS__.invoke("usage_foreground"),
+    ),
+    true,
+    "AURA must be foreground to validate foreground timing",
+  );
+  await pause(6500);
+  await main.locator('.rail [data-view="settings"]').click();
+  await main.locator("#usage-enabled").uncheck();
+  const usageBefore = await main.evaluate(() =>
+    JSON.parse(localStorage.getItem("aura-usage-v1")),
+  );
+  const timed = usageBefore.shortcuts.find((s) => s.id === "usage-fixture");
+  assert.equal(timed.internalLaunches, 1);
+  assert.ok(
+    timed.internalMs >= 2000,
+    "Actual remote-child foreground time must accrue",
+  );
+  await launchUsage();
+  await pause(1500);
+  await main.locator('.rail [data-view="settings"]').click();
+  const pausedUsage = await main.evaluate(() =>
+    JSON.parse(localStorage.getItem("aura-usage-v1")),
+  );
+  assert.deepEqual(
+    pausedUsage,
+    usageBefore,
+    "Paused usage must not count launches or time",
+  );
+  await main.locator("#usage-clear").click();
+  await main.locator("#usage-cancel").click();
+  assert.ok(
+    (await main.locator("#usage-rows").innerText()).includes("Usage fixture"),
+  );
+  await main.locator("#usage-clear").click();
+  await main.locator("#usage-clear-confirm").click();
+  assert.equal(await main.locator("#usage-rows tr").count(), 0);
+  await main.locator("#usage-enabled").check();
+  await launchUsage();
+  await pause(3000);
+  await main.locator('.rail [data-view="settings"]').click();
+  await main.locator("#usage-enabled").uncheck();
+  result.usage = await main.evaluate(() =>
+    JSON.parse(localStorage.getItem("aura-usage-v1")),
+  );
+  assert.equal(result.usage.shortcuts[0].internalLaunches, 1);
+  assert.ok(result.usage.shortcuts[0].internalMs > 0);
+  result.checks.push(
+    "Native usage tracks the identified remote child in foreground; pause, clear/cancel and per-shortcut counts work",
+  );
+  await main.locator("#usage-enabled").check();
+  await pause(1200);
+  await ownWindowVisibility(6);
+  await waitFor(
+    async () =>
+      !(await main.evaluate(() =>
+        window.__TAURI_INTERNALS__.invoke("usage_foreground"),
+      )),
+    "minimized AURA is not foreground",
+  );
+  // A checkpoint after minimization may still persist valid foreground time
+  // earned before it. Compare settled checkpoints rather than stale storage.
+  await pause(6000);
+  const minimizedStart = await main.evaluate(() =>
+    JSON.parse(localStorage.getItem("aura-usage-v1")),
+  );
+  await pause(6000);
+  const minimizedEnd = await main.evaluate(() =>
+    JSON.parse(localStorage.getItem("aura-usage-v1")),
+  );
+  assert.deepEqual(
+    minimizedEnd,
+    minimizedStart,
+    "Minimized app and site time must stop",
+  );
+  await ownWindowVisibility(9);
+  result.checks.push(
+    "Actual native minimize/restore stops foreground duration without inspecting other applications",
+  );
+  await main.locator("#usage-enabled").uncheck();
+  result.usage = await main.evaluate(() =>
+    JSON.parse(localStorage.getItem("aura-usage-v1")),
   );
   await main.locator('[data-view="settings"]').first().click();
   await main.locator("#exit-app").click();
@@ -366,6 +584,15 @@ try {
   assert.equal(persisted.shortcut.color, "#123456");
   assert.equal(persisted.shortcut.mark, "M");
   assert.equal(persisted.accent, "blue");
+  const persistedUsage = await restarted.evaluate(() =>
+    JSON.parse(localStorage.getItem("aura-usage-v1")),
+  );
+  assert.deepEqual(persistedUsage, result.usage);
+  await restarted.locator('.rail [data-view="settings"]').click();
+  assert.equal(await restarted.locator("#usage-enabled").isChecked(), false);
+  result.checks.push(
+    "Usage totals and paused preference survive a complete native process restart",
+  );
   result.checks.push(
     "Favorites, shortcut display values and accent survive a full native process restart",
   );

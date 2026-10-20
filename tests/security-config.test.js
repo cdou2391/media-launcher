@@ -4,22 +4,26 @@ import fs from "node:fs";
 const json = (path) =>
   JSON.parse(fs.readFileSync(new URL(path, import.meta.url), "utf8"));
 
-test("remote windows have no capabilities and trusted controls cannot launch arbitrary targets", () => {
+test("only the trusted webview has capabilities even when a site shares its native window", () => {
   const main = json("../src-tauri/capabilities/default.json");
-  const controls = json("../src-tauri/capabilities/browser-controls.json");
-  assert.deepEqual(main.windows, ["main"]);
-  assert.deepEqual(controls.windows, ["browser-controls"]);
-  for (const capability of [main, controls]) {
-    assert.equal(capability.remote, undefined);
-    assert.ok(!capability.permissions.includes("core:default"));
-    assert.ok(
-      !capability.permissions.some((permission) =>
-        /allow-create|shell:|fs:/.test(permission),
+  assert.deepEqual(main.webviews, ["main"]);
+  assert.equal(main.windows, undefined);
+  assert.equal(main.remote, undefined);
+  assert.ok(!main.permissions.includes("core:default"));
+  assert.ok(
+    !main.permissions.some((permission) =>
+      /allow-create|shell:|fs:/.test(permission),
+    ),
+  );
+  assert.equal(
+    fs.existsSync(
+      new URL(
+        "../src-tauri/capabilities/browser-controls.json",
+        import.meta.url,
       ),
-    );
-  }
-  assert.ok(!controls.permissions.includes("allow-open-target"));
-  assert.ok(!controls.permissions.includes("allow-launch-shortcut"));
+    ),
+    false,
+  );
 });
 
 test("local CSP forbids frames, remote scripts and native global injection", () => {

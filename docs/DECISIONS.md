@@ -1,5 +1,17 @@
 # Architecture Decision Record (ADR)
 
+## ADR-008 — Retain the AURA sidebar with an isolated child webview
+
+**Status:** Implemented; x64 native automation and both CI builds PASS (2026-10-20); physical acceptance open. Supersedes ADR-005's floating controls.
+
+The stable-window spike was built and exercised on Windows. The user's actual YouTube screenshot shows the separate owned control window obscuring a large portion of the site. The user requested AURA's existing side navigation while browsing. Separate top-level windows cannot deliver a shared native sidebar without brittle window positioning/overlays, so the stable spike has demonstrated a concrete UX deficiency.
+
+Prototype one remote child webview in the existing main native window, reserving the existing 90px AURA rail and a compact 128px local browser header. Home, Applications, Library and Settings close the service and navigate within the same local UI. Remote content has no AURA capabilities. All ACL grants move from native window labels to the exact trusted `main` webview label; native commands inspect the invoking Webview's own label/URL, not its shared window. Main retains its navigation guard. No remote DOM injection or iframe is used.
+
+Child creation uses Tauri's documented but unstable API, explicitly enabled through Cargo feature `embedded-browser` (default), with Tauri pinned to 2.12.4. Disabling default features disables internal browsing with an external fallback message. Creation remains in async commands. Native resize/DPI handling uses logical bounds, independent of remote page layout. Native open/close/retry operations serialize to avoid shared-label lifecycle races.
+
+The [x64 native spike](SIDEBAR_NATIVE_RESULT.json) passes 11 remote ACL denials, blocked privileged-origin navigation, all sidebar destinations, ten sessions, site fullscreen bounds and restart persistence. Both architecture installers build and pass six Rust tests in CI. Actual DPI/rotation/multi-monitor resizing and touch hit-testing remain physical acceptance gates. CI builds and physical touch/rotation acceptance must be recorded separately. API evidence: installed tauri-2.12.4 `Window::add_child`, `Webview::set_bounds`, and `WebviewWindow` command conversion; [Tauri capabilities](https://v2.tauri.app/security/capabilities/).
+
 ## ADR-001 — Preserve Tauri 2 starter and dual-architecture Windows packaging
 
 **Status:** Accepted (2026-10-20)
@@ -72,3 +84,19 @@ Auto tries ordinary websites internally, with compatibility visibly unverified; 
 ## Native validation follow-up — 2026-10-20
 
 ADR-005/006 now have real x64 WebView2 automation evidence: HTTPS rendering, migration/process persistence, eight ACL denials, Home/lifetime/close/Exit and fallback-related checks pass. Both target architectures compile and package in CI. The first smoke test found that WebView2 can deliver load callbacks after cancellation; load status now preserves blocked warnings until trusted Retry/new session, with a native regression test. Physical owner-window/fullscreen/touch/DPI behavior and ARM64 runtime acceptance remain open, so the stable architecture stays a proof of concept. [Evidence](NATIVE_SMOKE_RESULT.json).
+
+## ADR-009 - Local usage totals in Settings
+
+**Status:** Implemented; both CI builds and exact x64 delivery executable validated (2026-10-20). Explicitly requested by the user as a Settings addition; no installed-app discovery or system-wide activity monitoring is added.
+
+Track shortcut launch counts, last launch, foreground time in internal sites, and total AURA foreground time. Enable this local-only feature by default for the requested use, with a persistent Track usage switch and inline-confirmed Clear history action. Aggregate history uses versioned `aura-usage-v1` storage, separate from shortcuts/preferences. Persist only shortcut IDs/titles, counts, duration and the last-launch timestamp. Do not store targets, browsing history, credentials or a timeline, and make no network/analytics requests.
+
+Use a narrow trusted-main-only `usage_foreground` command backed by Windows GetForegroundWindow/IsIconic. This compares only AURA's own native window; it does not enumerate other apps. The installed window-focus implementation uses thread-local GetActiveWindow, which is not an adequate foreground-app measurement. Internal browser status supplies its validated optional shortcut ID and generation so timing survives frontend reload without confusing shortcuts that have identical names/URLs. Remote pages receive no new capabilities and the new command is included in native ACL-denial checks.
+
+The trusted UI samples once per second. Credit intervals only when both samples see AURA foreground and the same service session; exclude gaps over five seconds and discontinuous clocks. Persist every five seconds and on launch/pause/clear/explicit Exit/pagehide; a crash may lose the last few seconds. Restart creates a fresh monotonic baseline, never credits time while the app was closed, and no input-idle timer interrupts passive video viewing. These are approximate foreground durations, not attention or playback measurements.
+
+External launch requests receive a count after successful native acknowledgement, but duration is explicitly Unavailable (external). AURA cannot reliably identify individual external browser tabs or when the user finishes a native app. Preview launches count explicit external-tab requests and preview durations apply to the focused preview only. Failed launches and Retry do not add launches; explicit External fallback is a separate launch. Pause stops all new counts/time without deleting history. Corrupt/future history is preserved and paused until explicit clear; write failures retain session totals with a visible notice.
+
+References: [GetForegroundWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getforegroundwindow), [GetActiveWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getactivewindow).
+
+ADR-009 validation: [exact usage result](USAGE_NATIVE_RESULT.json) records native child-focus timing, pause, clear/cancel, minimized-time exclusion/restore, process restart persistence and 12 remote command denials. Both installers pass CI. Physical Surface input/DPI/rotation, sleep/lock and ARM64 runtime remain open.

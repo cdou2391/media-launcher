@@ -1,0 +1,130 @@
+{
+  "host": "Windows_NT 10.0.26200 x64",
+  "checks": [
+    "Packaged application renders Home in real WebView2",
+    "Native WebView2 v1 migration preserves favorite, color, mark and accent across renderer reload",
+    "Remote IPC inaccessible/denied; popup and privileged-origin navigation blocked",
+    "Retry invokes native original-target navigation",
+    "Ten real native child open/Home/close cycles restore Home and keyboard focus",
+    "Ordinary HTTPS Example Domain document loads inside AURA",
+    "All four persistent sidebar destinations close the site and navigate to the chosen AURA view",
+    "Native child bounds reserve the rail/header, including a real site fullscreen request",
+    "Native usage tracks the identified remote child in foreground; pause, clear/cancel and per-shortcut counts work",
+    "Actual native minimize/restore stops foreground duration without inspecting other applications",
+    "Native Exit launcher closes application",
+    "Usage totals and paused preference survive a complete native process restart",
+    "Favorites, shortcut display values and accent survive a full native process restart"
+  ],
+  "webview2": "155.0.4283.62",
+  "ipc": {
+    "bridgeAbsent": false,
+    "denied": [
+      {
+        "command": "open_target",
+        "denied": true,
+        "message": "Command open_target not allowed by ACL"
+      },
+      {
+        "command": "launch_shortcut",
+        "denied": true,
+        "message": "Command launch_shortcut not allowed by ACL"
+      },
+      {
+        "command": "open_internal",
+        "denied": true,
+        "message": "Command open_internal not allowed by ACL"
+      },
+      {
+        "command": "browser_status",
+        "denied": true,
+        "message": "Command browser_status not allowed by ACL"
+      },
+      {
+        "command": "browser_home",
+        "denied": true,
+        "message": "Command browser_home not allowed by ACL"
+      },
+      {
+        "command": "browser_retry",
+        "denied": true,
+        "message": "Command browser_retry not allowed by ACL"
+      },
+      {
+        "command": "browser_external",
+        "denied": true,
+        "message": "Command browser_external not allowed by ACL"
+      },
+      {
+        "command": "usage_foreground",
+        "denied": true,
+        "message": "Command usage_foreground not allowed by ACL"
+      },
+      {
+        "command": "plugin:window|close",
+        "denied": true,
+        "message": "Command plugin:window|close not allowed by ACL"
+      },
+      {
+        "command": "plugin:window|set_fullscreen",
+        "denied": true,
+        "message": "Command plugin:window|set_fullscreen not allowed by ACL"
+      },
+      {
+        "command": "plugin:webview|close",
+        "denied": true,
+        "message": "Command plugin:webview|close not allowed by ACL"
+      },
+      {
+        "command": "plugin:event|emit",
+        "denied": true,
+        "message": "Command plugin:event|emit not allowed by ACL"
+      }
+    ]
+  },
+  "https": {
+    "status": "PASS",
+    "url": "https://example.com/",
+    "title": "Example Domain",
+    "httpStatus": 200
+  },
+  "usage": {
+    "version": 1,
+    "enabled": false,
+    "auraMs": 3999,
+    "shortcuts": [
+      {
+        "id": "usage-fixture",
+        "title": "Usage fixture",
+        "internalMs": 3001,
+        "internalLaunches": 1,
+        "externalLaunches": 0,
+        "lastOpenedAt": 1792504406293
+      }
+    ]
+  },
+  "status": "PASS",
+  "date": "2026-10-20",
+  "sourceCommit": "a1d62a5bcda3c016a1b037dae8b330d461143e35",
+  "ciRun": "https://github.com/cdou2391/media-launcher/actions/runs/39432224423",
+  "ci": {
+    "x64": {
+      "jobId": 118659904510,
+      "uiTestsPassed": 16,
+      "rustTestsPassed": 6,
+      "artifactId": 12269212068
+    },
+    "arm64": {
+      "jobId": 118659905073,
+      "uiTestsPassed": 16,
+      "rustTestsPassed": 6,
+      "artifactId": 12268408901
+    }
+  },
+  "nodeTestsPassed": 22,
+  "sha256": {
+    "AURA.exe": "9CC280810A65B97DD1C5E463DBD21CD79ADAA2E0A74F8284D7962D83ED2774C8",
+    "x64-setup.exe": "9E226B981E2CD7119D51972B03C84CBA90FE7A8D21AAA92A8159A80D099619F3",
+    "arm64-setup.exe": "9160D2D0A0EAE1EAECE64237C1E8B6386FDF15F153EE253A17D3CAB90725B03F"
+  },
+  "scope": "Exact copied x64 delivery executable, real WebView2 via CDP, isolated profile. Window helper operates only on the test PID with executable-path validation; uses inline PowerShell without changing execution policy. Physical touch/DPI/rotation, ARM64 runtime, provider playback and installer install/uninstall NOT RUN."
+}

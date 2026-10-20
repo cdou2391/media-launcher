@@ -9,6 +9,7 @@ import {
   normalizeShortcut,
 } from "./services/shortcuts.js";
 import { launchRoute, routeLabel } from "./services/launch-router.js";
+import { setupUsage } from "./components/usage-panel.js";
 
 const ACCENT_KEY = "aura-accent-v1";
 let storage;
@@ -24,9 +25,20 @@ let dialogTrigger = null;
 let pendingLaunch = null;
 let launching = false;
 let homeNavigationReady = !native;
+let browsing = false;
+let browserContext = null;
+let browserActionBusy = false;
+let returnView = "home";
 let view = "home";
 let query = "";
 let toastHandle;
+const usage = setupUsage({
+  storage,
+  getShortcuts: () => apps,
+  getBrowser: () => browserContext,
+  native,
+  invoke,
+});
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 const accent = readPreference(storage, ACCENT_KEY, "sand");
@@ -103,10 +115,13 @@ async function launch(app, mode) {
         kind: shortcut.kind,
         launchMode: shortcut.launchMode,
         allowHttp: shortcut.allowHttp,
+        shortcutId: shortcut.id,
       });
+      usage.launch(shortcut, result.mode);
       toast(result.reason);
     } else {
       window.open(shortcut.target, "_blank", "noopener,noreferrer");
+      usage.launch(shortcut, "external");
       toast(route.reason + " Browser preview: opened a separate tab.");
     }
   } catch (error) {
@@ -269,10 +284,79 @@ function setView(next) {
   query = "";
   $("#search-box").value = "";
   render();
+  if (next === "settings") usage.render();
   window.scrollTo({ top: 0, behavior: "instant" });
 }
+function leaveBrowser() {
+  browserContext = null;
+  usage.contextChanged();
+  browsing = false;
+  document.body.classList.remove("browsing");
+  $("#browser-workspace").classList.add("hidden");
+}
+async function refreshBrowser() {
+  if (!native || !browsing) return;
+  try {
+    const current = await invoke("browser_status");
+    if (!browsing) return;
+    if (!current) {
+      leaveBrowser();
+      setView("home");
+      return;
+    }
+    if (browserContext?.sessionId !== current.sessionId) usage.contextChanged();
+    browserContext = current;
+    $("#service-title").textContent = current.title;
+    $("#service-origin").textContent = current.origin;
+    $("#service-origin").title = current.origin;
+    $("#browser-status").textContent = current.message;
+  } catch {
+    $("#browser-status").textContent =
+      "Website controls are unavailable. Try Home, or close AURA and reopen it.";
+  }
+}
+function enterBrowser() {
+  browsing = true;
+  returnView = "home";
+  document.body.classList.add("browsing");
+  $("#browser-workspace").classList.remove("hidden");
+  $$(".rail-link").forEach((button) => button.classList.remove("selected"));
+  $("#browser-home").focus();
+  refreshBrowser();
+}
+async function browserAction(action, destination = "home") {
+  if (!browsing || browserActionBusy) return;
+  browserActionBusy = true;
+  returnView = destination;
+  const externalShortcut = browserContext?.shortcutId
+    ? { id: browserContext.shortcutId, title: browserContext.title }
+    : null;
+  try {
+    await invoke(`browser_${action}`);
+    if (action === "external" && externalShortcut)
+      usage.launch(externalShortcut, "external");
+    if (action !== "retry") {
+      leaveBrowser();
+      setView(destination);
+      if (destination === "home") $("#hero-browse").focus();
+    } else await refreshBrowser();
+  } catch (error) {
+    $("#browser-status").textContent = `Unable to ${action}: ${String(error)}`;
+  } finally {
+    browserActionBusy = false;
+  }
+}
+for (const action of ["home", "retry", "external"]) {
+  $(`#browser-${action}`).addEventListener("click", () =>
+    browserAction(action),
+  );
+}
+setInterval(refreshBrowser, 1000);
 $$("[data-view]").forEach((b) =>
-  b.addEventListener("click", () => setView(b.dataset.view)),
+  b.addEventListener("click", () => {
+    if (browsing) browserAction("home", b.dataset.view);
+    else setView(b.dataset.view);
+  }),
 );
 function openDialog(app) {
   dialogTrigger = document.activeElement;
@@ -395,6 +479,7 @@ $("#toggle-fullscreen").addEventListener("click", async () => {
 $("#exit-app").addEventListener("click", async () => {
   try {
     if (native) {
+      usage.flush();
       await getCurrentWindow().close();
     } else {
       toast("Close this browser tab to leave the preview.");
@@ -419,6 +504,10 @@ updateClock();
 setInterval(updateClock, 15000);
 // Remote/gamepad-like directional keyboard navigation across visible controls.
 document.addEventListener("keydown", (e) => {
+  if (browsing && e.key === "Escape") {
+    browserAction("home");
+    return;
+  }
   const dialog = $$(".dialog-backdrop:not(.hidden) .dialog")[0];
   if (dialog) {
     if (e.key === "Escape") {
@@ -506,12 +595,18 @@ render();
 
 storageNotice(repository.notice);
 if (native) {
-  listen("aura-home", () => {
-    setView("home");
-    $("#hero-browse").focus();
-  })
-    .then(() => {
+  Promise.all([
+    listen("aura-home", () => {
+      leaveBrowser();
+      setView(returnView);
+      if (returnView === "home") $("#hero-browse").focus();
+      returnView = "home";
+    }),
+    listen("aura-browser", enterBrowser),
+  ])
+    .then(async () => {
       homeNavigationReady = true;
+      if (await invoke("browser_status")) enterBrowser();
     })
     .catch(() =>
       toast(
