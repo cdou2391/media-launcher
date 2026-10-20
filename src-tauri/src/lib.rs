@@ -1,43 +1,61 @@
+mod browser;
+mod launch;
+mod policy;
+mod security;
+
+use tauri::{webview::NewWindowResponse, Manager, WebviewWindow, WebviewWindowBuilder};
+
 #[tauri::command]
-fn open_target(target: String) -> Result<(), String> {
-    let target = target.trim();
-    if target.is_empty() || target.len() > 2048 {
-        return Err("Invalid target length".into());
+fn open_target(window: WebviewWindow, target: String, allow_http: bool) -> Result<(), String> {
+    security::authorize(&window, true)?;
+    launch::open_external(&target, allow_http)
+}
+
+#[tauri::command]
+async fn launch_shortcut(
+    window: WebviewWindow,
+    app: tauri::AppHandle,
+    target: String,
+    title: String,
+    kind: String,
+    launch_mode: String,
+    allow_http: bool,
+) -> Result<policy::Route, String> {
+    security::authorize(&window, true)?;
+    let route = policy::route(&target, &kind, &launch_mode, allow_http)?;
+    if route.mode == "internal" {
+        browser::open_internal(window, app, target, title, allow_http).await?;
+    } else {
+        launch::open_external(&target, allow_http)?;
     }
-    let is_url = target.starts_with("https://") || target.starts_with("http://");
-    let is_path = {
-        use std::path::Path;
-        let path = Path::new(target);
-        let valid_extension = path.extension()
-            .and_then(|ext| ext.to_str())
-            .map(|ext| matches!(ext.to_ascii_lowercase().as_str(), "exe" | "lnk" | "url" | "mp4" | "mkv" | "avi" | "mp3" | "flac"))
-            .unwrap_or(false);
-        path.is_absolute() && valid_extension
-    };
-    if !is_url && !is_path {
-        return Err("Only http(s) URLs and absolute executable, shortcut, and media file paths are allowed".into());
-    }
-    #[cfg(target_os = "windows")]
-    {
-        use std::os::windows::ffi::OsStrExt;
-        use windows_sys::Win32::UI::Shell::ShellExecuteW;
-        use windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
-        let action: Vec<u16> = std::ffi::OsStr::new("open").encode_wide().chain(Some(0)).collect();
-        let wide: Vec<u16> = std::ffi::OsStr::new(target).encode_wide().chain(Some(0)).collect();
-        let result = unsafe { ShellExecuteW(std::ptr::null_mut(), action.as_ptr(), wide.as_ptr(), std::ptr::null(), std::ptr::null(), SW_SHOWNORMAL) };
-        if (result as isize) <= 32 {
-            return Err(format!("Windows could not open target (ShellExecute result {})", result as isize));
-        }
-        Ok(())
-    }
-    #[cfg(not(target_os = "windows"))]
-    { Err("AURA desktop launcher is currently supported on Windows only".into()) }
+    Ok(route)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![open_target])
+        .manage(browser::BrowserState::default())
+        .setup(|app| {
+            WebviewWindowBuilder::from_config(app, &app.config().app.windows[0])?
+                .on_navigation(|url| security::trusted_page("main", url))
+                .on_new_window(|_, _| NewWindowResponse::Deny)
+                .build()?;
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            if window.label() == "main" && matches!(event, tauri::WindowEvent::Destroyed) {
+                window.app_handle().exit(0);
+            }
+        })
+        .invoke_handler(tauri::generate_handler![
+            open_target,
+            launch_shortcut,
+            browser::open_internal,
+            browser::browser_status,
+            browser::browser_home,
+            browser::browser_retry,
+            browser::browser_external
+        ])
         .run(tauri::generate_context!())
         .expect("Failed to start AURA Home Media");
 }

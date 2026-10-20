@@ -4,7 +4,13 @@
   "description": "Minimum window controls for the media launcher",
   "windows": ["main"],
   "permissions": [
-    "core:default",
+    "allow-open-target",
+    "allow-launch-shortcut",
+    "allow-open-internal",
+    "allow-browser-status",
+    "allow-browser-home",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
     "core:window:allow-set-fullscreen",
     "core:window:allow-is-fullscreen",
     "core:window:allow-close"

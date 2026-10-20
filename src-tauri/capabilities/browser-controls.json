@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "browser-controls",
+  "description": "Only local AURA toolbar actions; no arbitrary launcher or window creation commands",
+  "windows": ["browser-controls"],
+  "permissions": [
+    "allow-browser-status",
+    "allow-browser-home",
+    "allow-browser-retry",
+    "allow-browser-external"
+  ]
+}

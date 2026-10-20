@@ -1,0 +1,85 @@
+{
+  "sourceCommit": "8569144e0a561ca870dd693fd9ab2c2b7d9385bf",
+  "ciRun": "https://github.com/cdou2391/media-launcher/actions/runs/39412058478",
+  "date": "2026-10-20",
+  "host": "Windows_NT 10.0.26200 x64",
+  "webview2": "155.0.4283.62",
+  "status": "PASS",
+  "checks": [
+    "Packaged application renders Home in real WebView2",
+    "Native WebView2 v1 migration preserves favorite, color, mark and accent across renderer reload",
+    "Remote IPC inaccessible/denied; popup and privileged-origin navigation blocked",
+    "Retry invokes native original-target navigation",
+    "Ten real native open/Home/close cycles restore Home and keyboard focus",
+    "Ordinary HTTPS Example Domain document loads inside AURA",
+    "Native close requests for service and toolbar both restore Home",
+    "Native Exit launcher closes application",
+    "Favorites, shortcut display values and accent survive a full native process restart"
+  ],
+  "ipc": {
+    "bridgeAbsent": false,
+    "denied": [
+      {
+        "command": "open_target",
+        "denied": true,
+        "message": "Command open_target not allowed by ACL"
+      },
+      {
+        "command": "launch_shortcut",
+        "denied": true,
+        "message": "Command launch_shortcut not allowed by ACL"
+      },
+      {
+        "command": "open_internal",
+        "denied": true,
+        "message": "Command open_internal not allowed by ACL"
+      },
+      {
+        "command": "browser_status",
+        "denied": true,
+        "message": "Command browser_status not allowed by ACL"
+      },
+      {
+        "command": "browser_home",
+        "denied": true,
+        "message": "Command browser_home not allowed by ACL"
+      },
+      {
+        "command": "browser_retry",
+        "denied": true,
+        "message": "Command browser_retry not allowed by ACL"
+      },
+      {
+        "command": "browser_external",
+        "denied": true,
+        "message": "Command browser_external not allowed by ACL"
+      },
+      {
+        "command": "plugin:window|close",
+        "denied": true,
+        "message": "Command plugin:window|close not allowed by ACL"
+      }
+    ]
+  },
+  "https": {
+    "status": "PASS",
+    "url": "https://example.com/",
+    "title": "Example Domain",
+    "httpStatus": 200
+  },
+  "installers": {
+    "x64": {
+      "artifact": "https://github.com/cdou2391/media-launcher/actions/runs/39412058478/artifacts/12259727752",
+      "sha256": "93CA4B0D6DBC5C66131F947DB81D650CC64E52788F5F99C2C496913E43EC91F1"
+    },
+    "arm64": {
+      "artifact": "https://github.com/cdou2391/media-launcher/actions/runs/39412058478/artifacts/12260087359",
+      "sha256": "780DA81C95BCAABB19734238C0D3C8B090CEBEBA7918B66743B9702DBE833CFF"
+    }
+  },
+  "limitations": [
+    "No physical Surface touch, DPI/rotation or fullscreen z-order acceptance",
+    "ARM64 WebView2 runtime not exercised",
+    "No streaming-provider playback/login or installer install/uninstall validation"
+  ]
+}
