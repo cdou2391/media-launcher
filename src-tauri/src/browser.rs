@@ -20,6 +20,48 @@ pub struct BrowserStatus {
     pub message: String,
 }
 
+impl BrowserStatus {
+    fn navigation_started(&mut self, origin: String) -> bool {
+        if self.phase == "blocked" {
+            return false;
+        }
+        self.phase = "loading".into();
+        self.message = "Loading website. Home and external fallback remain available.".into();
+        self.origin = origin;
+        true
+    }
+    fn page_received(&mut self, origin: String) {
+        // WebView2 can complete a cancelled load after a warning was recorded.
+        if matches!(self.phase.as_str(), "loading" | "slow") {
+            self.phase = "received".into();
+            self.message = "Page received. If login, playback or the page fails, use Retry or Open externally.".into();
+            self.origin = origin;
+        }
+    }
+}
+
+fn navigation_started(app: &AppHandle, id: u64, origin: String) {
+    let state = app.state::<BrowserState>();
+    let Ok(mut guard) = state.session.lock() else {
+        return;
+    };
+    if let Some(session) = guard.as_mut().filter(|s| s.id == id) {
+        if session.status.navigation_started(origin) {
+            session.changed = Instant::now();
+        }
+    }
+}
+
+fn page_received(app: &AppHandle, id: u64, origin: String) {
+    let state = app.state::<BrowserState>();
+    let Ok(mut guard) = state.session.lock() else {
+        return;
+    };
+    if let Some(session) = guard.as_mut().filter(|s| s.id == id) {
+        session.status.page_received(origin);
+    }
+}
+
 struct Session {
     id: u64,
     target: String,
@@ -179,6 +221,7 @@ fn create_windows(
                 && !security::trusted_page("main", next)
                 && !security::trusted_page("browser-controls", next);
             if !allowed { update(&nav_app, id, "blocked", "This navigation is blocked. Use Open externally for supported sign-in flows.", None); }
+            else { navigation_started(&nav_app, id, next.origin().ascii_serialization()); }
             allowed
         })
         .on_new_window(move |_, _| {
@@ -187,11 +230,9 @@ fn create_windows(
         })
         .on_download(|_, _| false)
         .on_page_load(move |_, payload| {
-            let (phase, message) = match payload.event() {
-                PageLoadEvent::Started => ("loading", "Loading website. Home and external fallback remain available."),
-                PageLoadEvent::Finished => ("received", "Page received. If login, playback or the page fails, use Retry or Open externally."),
-            };
-            update(&load_app, id, phase, message, Some(payload.url().origin().ascii_serialization()));
+            if payload.event() == PageLoadEvent::Finished {
+                page_received(&load_app, id, payload.url().origin().ascii_serialization());
+            }
         })
         .build().map_err(|e| e.to_string())?;
     let controls = WebviewWindowBuilder::new(
@@ -321,4 +362,28 @@ pub async fn browser_external(window: WebviewWindow, app: AppHandle) -> Result<(
     // Only the originally approved target, never a remote-supplied popup URL.
     launch::open_external(&target, allow_http)?;
     finish(&app, None)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cancelled_load_completion_keeps_navigation_or_popup_warning() {
+        let mut status = BrowserStatus {
+            title: "Fixture".into(),
+            origin: "https://example.com".into(),
+            phase: "blocked".into(),
+            message: "Navigation blocked".into(),
+        };
+        status.navigation_started("http://tauri.localhost".into());
+        status.page_received("http://tauri.localhost".into());
+        assert_eq!(status.phase, "blocked");
+        assert_eq!(status.message, "Navigation blocked");
+        assert_eq!(status.origin, "https://example.com");
+        status.phase = "loading".into();
+        status.page_received("https://example.org".into());
+        assert_eq!(status.phase, "received");
+        assert_eq!(status.origin, "https://example.org");
+    }
 }
