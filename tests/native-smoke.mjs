@@ -268,6 +268,7 @@ try {
     () => favoriteRemote.isClosed(),
     "favorite session returns Home",
   );
+  await main.locator("body:not(.browsing)").waitFor();
   assert.equal(
     await main.locator('.rail-favorite[aria-current="true"]').count(),
     0,
