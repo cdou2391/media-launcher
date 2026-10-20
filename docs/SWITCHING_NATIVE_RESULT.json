@@ -1,0 +1,188 @@
+{
+  "host": "Windows_NT 10.0.26200 x64",
+  "checks": [
+    "Packaged application renders Home in real WebView2",
+    "Native WebView2 v1 migration preserves favorite, color, mark and accent across renderer reload",
+    "Sidebar favorites open and switch real native services, highlight the active shortcut, and preserve the active session when reselected",
+    "Internal switches retain the browser shell without Home flashes; the AURA loader remains visible until the delayed remote document is ready",
+    "Native reveal rejects loading and wrong-session requests from trusted UI",
+    "Sidebar Home cancels a delayed native load and later callbacks cannot restore the closed service",
+    "Compact 56px native browser header has only the service title and touch-sized refresh icon",
+    "Remote IPC inaccessible/denied; popup and privileged-origin navigation blocked",
+    "Retry invokes native original-target navigation",
+    "Ten real native child open/Home/close cycles restore Home and keyboard focus",
+    "Ordinary HTTPS Example Domain document loads inside AURA",
+    "All four persistent sidebar destinations close the site and navigate to the chosen AURA view",
+    "Native child bounds reserve the rail/header, including a real site fullscreen request",
+    "Native usage tracks the identified remote child in foreground; pause, clear/cancel and per-shortcut counts work",
+    "Actual native minimize/restore stops foreground duration without inspecting other applications",
+    "Native Exit launcher closes application",
+    "Sidebar favorite shortcuts and labels survive a full native process restart",
+    "Usage totals and paused preference survive a complete native process restart",
+    "Favorites, shortcut display values and accent survive a full native process restart"
+  ],
+  "webview2": "155.0.4283.62",
+  "ipc": {
+    "bridgeAbsent": false,
+    "denied": [
+      {
+        "command": "open_target",
+        "denied": true,
+        "message": "Command open_target not allowed by ACL"
+      },
+      {
+        "command": "launch_shortcut",
+        "denied": true,
+        "message": "Command launch_shortcut not allowed by ACL"
+      },
+      {
+        "command": "open_internal",
+        "denied": true,
+        "message": "Command open_internal not allowed by ACL"
+      },
+      {
+        "command": "browser_status",
+        "denied": true,
+        "message": "Command browser_status not allowed by ACL"
+      },
+      {
+        "command": "browser_home",
+        "denied": true,
+        "message": "Command browser_home not allowed by ACL"
+      },
+      {
+        "command": "browser_reveal",
+        "denied": true,
+        "message": "Command browser_reveal not allowed by ACL"
+      },
+      {
+        "command": "browser_retry",
+        "denied": true,
+        "message": "Command browser_retry not allowed by ACL"
+      },
+      {
+        "command": "browser_external",
+        "denied": true,
+        "message": "Command browser_external not allowed by ACL"
+      },
+      {
+        "command": "usage_foreground",
+        "denied": true,
+        "message": "Command usage_foreground not allowed by ACL"
+      },
+      {
+        "command": "plugin:window|close",
+        "denied": true,
+        "message": "Command plugin:window|close not allowed by ACL"
+      },
+      {
+        "command": "plugin:window|set_fullscreen",
+        "denied": true,
+        "message": "Command plugin:window|set_fullscreen not allowed by ACL"
+      },
+      {
+        "command": "plugin:webview|close",
+        "denied": true,
+        "message": "Command plugin:webview|close not allowed by ACL"
+      },
+      {
+        "command": "plugin:event|emit",
+        "denied": true,
+        "message": "Command plugin:event|emit not allowed by ACL"
+      }
+    ]
+  },
+  "https": {
+    "status": "PASS",
+    "url": "https://example.com/",
+    "title": "Example Domain",
+    "httpStatus": 200
+  },
+  "usage": {
+    "version": 1,
+    "enabled": false,
+    "auraMs": 4001,
+    "shortcuts": [
+      {
+        "id": "usage-fixture",
+        "title": "Usage fixture",
+        "internalMs": 3001,
+        "internalLaunches": 1,
+        "externalLaunches": 0,
+        "lastOpenedAt": 1792539063172
+      }
+    ]
+  },
+  "status": "PASS",
+  "date": "2026-10-21",
+  "sourceCommit": "44e98c47862beda6aef3171e624c9f7b08361a5a",
+  "ciRun": "https://github.com/cdou2391/media-launcher/actions/runs/39514351039",
+  "ci": {
+    "status": "success",
+    "nodeTests": 22,
+    "browserTests": 25,
+    "rustTestsPerArchitecture": 6,
+    "architectures": ["x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc"],
+    "artifacts": [
+      {
+        "id": 12307017562,
+        "name": "aura-home-media-arm64",
+        "digest": "sha256:cdc8c3d851dcfbce367aa29d5bf7c9e18fb5cde79c4f679367f5840128746d1a",
+        "downloadDigestVerified": true
+      },
+      {
+        "id": 12306957757,
+        "name": "aura-home-media-x64",
+        "digest": "sha256:a730eececb9fd742a5062784a4af4eb4aaa36fee71cf7f91602e07cfc746e671",
+        "downloadDigestVerified": true
+      }
+    ]
+  },
+  "switching": {
+    "nativeSequence": [
+      "favorite-one",
+      "favorite-two",
+      "favorite-one",
+      "favorite-two"
+    ],
+    "homeFlashCount": 0,
+    "loaderHeldUntilControlledDocumentCompletion": true,
+    "prematureAndWrongSessionRevealDenied": true,
+    "sidebarHomeCancelsPendingDocument": true,
+    "activeReselectPreservesSession": true,
+    "restartPersistence": true,
+    "nativeScreenshotVisuallyInspected": true,
+    "browserPreviewChecks": [
+      "no Home frame during creation/load or delayed Home event",
+      "minimum window geometry, accent and reduced motion",
+      "slow-load guidance, stopped animation and refresh",
+      "failed-close retention and failed-create retry",
+      "Home during loading and queued local destination during creation",
+      "no reveal when a local destination is already queued",
+      "reselect loading favorite preserves session"
+    ]
+  },
+  "deliveredBinaries": [
+    {
+      "file": "AURA.exe",
+      "sha256": "019F5D6363735E64120013A285B6B6893D8D51A949FD772365B63728928A492D"
+    },
+    {
+      "file": "AURA-x64-setup.exe",
+      "sha256": "A9A08D96187106D2F59919DC2925990E37D8269F9072403C5441FCAC7CBDD8B2"
+    },
+    {
+      "file": "AURA-arm64-setup.exe",
+      "sha256": "39FF463D95589193FF1C3595E5FDD2C1794B0BDA36812BBB06962FD2EDFEAC00"
+    }
+  ],
+  "unverified": [
+    "Physical Surface touch/DPI/rotation",
+    "ARM64 runtime",
+    "Provider login/playback",
+    "Installer install/uninstall"
+  ],
+  "providerObservation": {
+    "netflixInternal": "User reports black video with subtitles; cause undiagnosed. This change does not alter protected playback. Auto remains External."
+  }
+}

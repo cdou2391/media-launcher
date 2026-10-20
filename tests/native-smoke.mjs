@@ -289,7 +289,7 @@ try {
       "favorite opens controlled website",
     );
     await favoriteRemote.locator("h1").waitFor();
-    await main.locator("#browser-loading.hidden").waitFor();
+    await main.locator("#browser-loading").waitFor({ state: "hidden" });
     if (old)
       assert.equal(
         await main.evaluate(() => window.homeFlashes),
