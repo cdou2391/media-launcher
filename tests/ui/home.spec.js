@@ -168,18 +168,15 @@ test("offline dashboard, exit and responsive portrait navigation remain usable",
   ).toBe(true);
 });
 
-test("owned-toolbar page fits narrow viewport and all actions have touch targets", async ({
+test("browser preview keeps its existing sidebar and has no floating controls", async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 300, height: 264 });
-  await page.goto("/browser.html");
-  await expect(page.locator("#browser-status")).toContainText(
-    "Browser preview",
+  await page.goto("/");
+  await expect(page.locator(".rail")).toBeVisible();
+  await expect(page.locator("#browser-workspace")).toBeHidden();
+  await page.locator("#favorites .tile").filter({ hasText: "YouTube" }).click();
+  await expect(page.locator("#launch-message")).toContainText(
+    "browser preview cannot",
   );
-  for (const id of ["browser-home", "browser-retry", "browser-external"]) {
-    const rect = await page.locator(`#${id}`).boundingBox();
-    expect(rect.width).toBeGreaterThanOrEqual(44);
-    expect(rect.height).toBeGreaterThanOrEqual(44);
-    expect(rect.y + rect.height).toBeLessThanOrEqual(264);
-  }
+  await expect(page.locator("#browser-workspace")).toBeHidden();
 });

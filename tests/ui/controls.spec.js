@@ -6,8 +6,19 @@ test("toolbar Home, Retry and external actions use bounded IPC (mock only)", asy
   await page.addInitScript(() => {
     window.isTauri = true;
     window.commands = [];
+    window.nativeEvents = {};
+    window.__callbacks = {};
     window.__TAURI_INTERNALS__ = {
+      transformCallback: (callback) => {
+        const id = Object.keys(window.__callbacks).length;
+        window.__callbacks[id] = callback;
+        return id;
+      },
       invoke: async (command, args) => {
+        if (command === "plugin:event|listen") {
+          window.nativeEvents[args.event] = window.__callbacks[args.handler];
+          return 1;
+        }
         window.commands.push({ command, args });
         if (command === "browser_status")
           return {
@@ -19,7 +30,10 @@ test("toolbar Home, Retry and external actions use bounded IPC (mock only)", asy
       },
     };
   });
-  await page.goto("/browser.html");
+  await page.goto("/");
+  await page.evaluate(() =>
+    window.nativeEvents["aura-browser"]({ payload: null }),
+  );
   await expect(page.locator("#service-title")).toHaveText("Test service");
   await expect(page.locator("#browser-status")).toContainText("Popup blocked");
   await page.getByRole("button", { name: "Retry", exact: true }).click();
@@ -62,14 +76,22 @@ test("native Home event returns from Applications to actual Home with keyboard f
   await page.addInitScript(() => {
     window.isTauri = true;
     window.nativeCalls = [];
+    window.nativeCallbacks = {};
+    window.nativeEvents = {};
     window.__TAURI_INTERNALS__ = {
       transformCallback: (callback) => {
-        window.homeEvent = callback;
-        return 1;
+        const id = Object.keys(window.nativeCallbacks).length;
+        window.nativeCallbacks[id] = callback;
+        return id;
       },
       invoke: async (command, args) => {
         window.nativeCalls.push({ command, args });
-        if (command === "plugin:event|listen") return 1;
+        if (command === "plugin:event|listen") {
+          window.nativeEvents[args.event] =
+            window.nativeCallbacks[args.handler];
+          return 1;
+        }
+        if (command === "browser_status") return null;
         return { mode: "internal", reason: "Opening inside AURA." };
       },
     };
@@ -92,7 +114,11 @@ test("native Home event returns from Applications to actual Home with keyboard f
     allowHttp: false,
   });
   await page.evaluate(() =>
-    window.homeEvent({ event: "aura-home", payload: null, id: 1 }),
+    window.nativeEvents["aura-home"]({
+      event: "aura-home",
+      payload: null,
+      id: 1,
+    }),
   );
   await expect(
     page.getByRole("heading", { name: "Home", exact: true }),
@@ -100,30 +126,58 @@ test("native Home event returns from Applications to actual Home with keyboard f
   await expect(page.locator("#hero-browse")).toBeFocused();
 });
 
-test("long service identity and error message keep narrow toolbar actions visible", async ({
+test("sidebar and browser actions remain visible with long titles in a narrow window (mock only)", async ({
   page,
 }) => {
   await page.addInitScript(() => {
     window.isTauri = true;
+    window.nativeEvents = {};
+    const callbacks = {};
     window.__TAURI_INTERNALS__ = {
-      invoke: async () => ({
-        title: "A very long service title that still fits safely",
-        origin: "https://" + "very-long-host-name.".repeat(10) + "example.com",
-        message:
-          "The website is taking too long. Check your connection, Retry or Open externally.",
-      }),
+      transformCallback: (callback) => {
+        const id = Object.keys(callbacks).length;
+        callbacks[id] = callback;
+        return id;
+      },
+      invoke: async (command, args) => {
+        if (command === "plugin:event|listen") {
+          window.nativeEvents[args.event] = callbacks[args.handler];
+          return 1;
+        }
+        if (command === "browser_home") {
+          window.nativeEvents["aura-home"]({ payload: null });
+          return;
+        }
+        if (command === "browser_status")
+          return {
+            title: "A very long service title that still fits safely",
+            origin:
+              "https://" + "very-long-host-name.".repeat(10) + "example.com",
+            message:
+              "The website is taking too long. Check your connection, Retry or Open externally.",
+          };
+      },
     };
   });
-  await page.setViewportSize({ width: 280, height: 264 });
-  await page.goto("/browser.html");
+  await page.setViewportSize({ width: 620, height: 470 });
+  await page.goto("/");
+  await page.evaluate(() =>
+    window.nativeEvents["aura-browser"]({ payload: null }),
+  );
   await expect(page.locator("#service-title")).toContainText("very long");
   for (const id of ["browser-home", "browser-retry", "browser-external"]) {
     const rect = await page.locator(`#${id}`).boundingBox();
-    expect(rect.y + rect.height).toBeLessThanOrEqual(264);
+    expect(rect.y + rect.height).toBeLessThanOrEqual(128);
+    expect(rect.x).toBeGreaterThanOrEqual(90);
+    expect(rect.x + rect.width).toBeLessThanOrEqual(620);
+    expect(rect.height).toBeGreaterThanOrEqual(44);
   }
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true);
+  for (const name of ["Home", "All applications", "Library", "Settings"]) {
+    await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
+  }
+  const rail = await page.locator(".rail").boundingBox();
+  expect(rail.width).toBe(90);
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await expect(page.locator("#settings-view")).toBeVisible();
+  await expect(page.locator("#browser-workspace")).toBeHidden();
 });

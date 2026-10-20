@@ -4,6 +4,14 @@
 
 Phase 0 safeguards and Phase 1 application code are implemented. Both architectures build and pass Rust tests in CI; the x64 package passes real WebView2 automation. Phase exit gates remain OPEN for physical touch/fullscreen/DPI/rotation, ARM64 runtime, provider login/playback and remaining baseline local-file/app launch checks. No Phase 2+ feature was added.
 
+## Persistent sidebar follow-up � in progress
+
+The user�s Windows screenshot showed the floating return panel obscuring YouTube. It could not provide the requested persistent AURA sidebar. ADR-008 records that stable-spike deficiency and the explicit `embedded-browser` child-webview experiment, pinned to Tauri 2.12.4. The remote child now reserves the existing 90px sidebar and 128px trusted header in the main window. All four rail destinations close the service and open the chosen AURA view. The former browser.html, controls JS/CSS and controls capability are removed. Native command checks inspect the invoking Webview and grants target only the exact local `main` webview, never the shared window. Native mutations serialize; resize/DPI bounds preserve chrome.
+
+Changed in this batch: index.html, src/main.js, src/style.css, vite.config.js, src-tauri/Cargo.toml, src-tauri/src/browser.rs, src-tauri/src/lib.rs, src-tauri/src/security.rs, src-tauri/capabilities/default.json, tests/security-config.test.js, tests/ui/controls.spec.js, tests/ui/csp.spec.js, tests/native-smoke.mjs, README.md, docs/DECISIONS.md, docs/PROGRESS.md. Deleted: browser.html, src/browser-controls.js, src/browser-controls.css, src-tauri/capabilities/browser-controls.json.
+
+Available lint/format, 14 Node tests and production Vite build PASS after the initial change. Browser-preview tests and the replacement dual-architecture/native spike are being run; do not apply the earlier native evidence below to this architecture until revalidated. Physical Surface touch/rotation/DPI, ARM64 runtime and provider playback remain unverified.
+
 ## Implemented
 
 - Dependency lockfiles, pinned JS dependencies and Rust toolchain, ESLint/Prettier, Node tests, Playwright preview tests and separate Windows x64/ARM64 CI checks.

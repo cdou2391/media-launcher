@@ -57,8 +57,5 @@ test("production assets load under CSP while remote connections and scripts are 
   await expect(
     page.addScriptTag({ url: "https://example.com/blocked.js" }),
   ).rejects.toThrow();
-  await page.goto(`${origin}/browser.html`);
-  await expect(
-    page.getByRole("button", { name: "⌂ Return to AURA Home", exact: true }),
-  ).toBeVisible();
+  await expect(page.locator(".rail")).toBeVisible();
 });

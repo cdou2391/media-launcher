@@ -3,17 +3,17 @@ mod launch;
 mod policy;
 mod security;
 
-use tauri::{webview::NewWindowResponse, Manager, WebviewWindow, WebviewWindowBuilder};
+use tauri::{webview::NewWindowResponse, Manager, Webview, WebviewWindowBuilder};
 
 #[tauri::command]
-fn open_target(window: WebviewWindow, target: String, allow_http: bool) -> Result<(), String> {
+fn open_target(window: Webview, target: String, allow_http: bool) -> Result<(), String> {
     security::authorize(&window, true)?;
     launch::open_external(&target, allow_http)
 }
 
 #[tauri::command]
 async fn launch_shortcut(
-    window: WebviewWindow,
+    window: Webview,
     app: tauri::AppHandle,
     target: String,
     title: String,
@@ -43,6 +43,14 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            if window.label() == "main"
+                && matches!(
+                    event,
+                    tauri::WindowEvent::Resized(_) | tauri::WindowEvent::ScaleFactorChanged { .. }
+                )
+            {
+                let _ = browser::resize_service(window.app_handle());
+            }
             if window.label() == "main" && matches!(event, tauri::WindowEvent::Destroyed) {
                 window.app_handle().exit(0);
             }

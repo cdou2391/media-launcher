@@ -9,7 +9,7 @@ Phase 0 safeguards and Phase 1 application code are implemented. **The native x6
 - Versioned v2 shortcuts retain v1 favorites, custom targets, colors and marks. Migration keeps the original v1 key and a backup. Unreadable or future-version data is preserved; a visible notice explains session-only changes.
 - Add or edit each shortcut's Auto / Inside AURA / External mode. Tiles show the chosen destination. Windows apps and media files always launch externally.
 - Auto tries ordinary HTTP(S) websites in an AURA-owned native service window. Netflix, Disney+, Prime Video/Amazon and Spotify default to External because embedded authentication/protected playback has not been verified. Explicit Internal overrides show the compatibility limitation.
-- Internal browsing uses stable WebviewWindow plus a separate local control window owned by the remote window. The control window contains **Return to AURA Home**, Retry and Open externally, with 48px buttons. Native close controls offer another return path. Ownership, fullscreen, rotation, DPI, task switching and touch still require Windows acceptance testing.
+- Internal browsing now reserves AURA's persistent sidebar and a compact local Home/Retry/External header in the same native window. The floating control window has been removed. Selecting Home, Applications, Library or Settings closes the website and opens that AURA view. This uses a pinned Tauri 2.12.4 child webview experiment, explicitly enabled by Cargo feature `embedded-browser`; see ADR-008. The new native build/runtime checks are pending; earlier native results below describe the prior stable-window spike. Physical touch/DPI/rotation and ARM64 runtime remain acceptance gates.
 - Remote pages have no AURA command capabilities. Native commands independently check the caller's label, origin and route. Remote navigation to local asset/IPC origins, popups and downloads is blocked. No AURA scripts or credentials are injected into service pages.
 - HTTPS is preferred. HTTP requires explicit consent per shortcut, including after v1 migration. Settings must not contain credentials. Normal website sessions are managed by WebView2; AURA does not copy browser cookies or bypass provider restrictions.
 
@@ -47,12 +47,12 @@ Installers are written under `src-tauri/target/<target>/release/bundle/nsis/`. A
 ## Use the proof of concept
 
 1. Open All applications and edit a shortcut, or add `https://example.com` in Internal mode. For Jellyfin, enter your own server URL; explicitly allow HTTP if necessary. The default localhost:8096 entry requires that consent before launching.
-2. In the native app, launch the shortcut. A remote service window and separate AURA controls should appear. Home hides only after both windows have been created.
+2. In the native app, launch the shortcut. The website appears beside the existing sidebar, below AURA�s trusted browser controls. The dashboard stays in the same native window.
 3. Use Return to AURA Home to close the service and return to the Home view. Retry reloads the original shortcut. Open externally opens that same original URL in the default browser and restores Home.
 4. A blocked popup, slow load, unsupported login or playback can use the visible external fallback. A page-finished event is not proof of successful login or playback. A failed window creation leaves Home available with an error and fallback dialog.
 5. Exit using Settings → Exit launcher. AURA does not replace Explorer or enforce kiosk mode.
 
-No automatic app discovery, Jellyfin/Plex synchronization, aggregated Continue Watching, built-in media playback or updater has been added. Phase 2 and later remain out of scope. The next release gate is native x64/ARM64 build verification followed by the physical touch/return-navigation and remote IPC negative tests in [the acceptance matrix](docs/ACCEPTANCE_TESTS.md).
+No automatic app discovery, Jellyfin/Plex synchronization, aggregated Continue Watching, built-in media playback or updater has been added. Phase 2 and later remain out of scope. The next release gate is validation of the integrated sidebar child-webview spike, followed by the physical touch/return-navigation and remote IPC negative tests in [the acceptance matrix](docs/ACCEPTANCE_TESTS.md).
 
 ## Reproduce the native smoke test
 
@@ -63,3 +63,7 @@ npm run test:native -- "D:\path\to\aura-home-media.exe"
 ```
 
 This Windows-only test launches that executable with a unique WebView2 profile and a process-scoped local debug port, serves a controlled untrusted HTTP fixture, and checks actual IPC denials, lifecycle, migration, restart persistence and an HTTPS document. It closes its app processes and leaves result JSON/profile files under the ignored .tools directory. No installer, registry setting, global environment variable or existing browser profile is changed. It requires the installed WebView2 runtime and HTTPS access. A PASS is Windows automation evidence, not physical touch/fullscreen or media-playback validation.
+
+## Sidebar browser experiment
+
+Build normally to enable the `embedded-browser` Cargo feature. For an external-only build that avoids Tauri's unstable child API, use `npm run tauri:build -- --no-default-features -- --locked`; explicit Internal then reports that it is disabled and offers External. No remote webview receives a window-wide capability grant: permissions target only the bundled `main` webview, with native caller label/origin checks as a second boundary. Site login/playback limitations and DRM fallback policy are unchanged.

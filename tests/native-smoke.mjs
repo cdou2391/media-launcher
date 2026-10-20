@@ -26,7 +26,7 @@ const fixture = http.createServer((request, response) => {
   if (request.url === "/") fixtureRequests++;
   response.setHeader("Content-Type", "text/html");
   response.end(
-    '<!doctype html><html><title>Remote isolation fixture</title><body><h1>Remote isolation fixture</h1><button id="popup" onclick="window.open(\'/popup\')">Popup</button><button id="local" onclick="location.href=\'http://tauri.localhost/index.html\'">Local navigation</button></body></html>',
+    '<!doctype html><html><title>Remote isolation fixture</title><body><h1>Remote isolation fixture</h1><button id="fullscreen" onclick="document.documentElement.requestFullscreen()">Fullscreen</button><button id="popup" onclick="window.open(\'/popup\')">Popup</button><button id="local" onclick="location.href=\'http://tauri.localhost/index.html\'">Local navigation</button></body></html>',
   );
 });
 await new Promise((resolve) => fixture.listen(0, "127.0.0.1", resolve));
@@ -150,12 +150,19 @@ try {
       () => context.pages().find((page) => page.url().startsWith(target)),
       "remote service window",
     );
-    const toolbar = await waitFor(
-      () =>
-        context.pages().find((page) => page.url().includes("/browser.html")),
-      "owned local toolbar",
-    );
+    const toolbar = main;
+    await main.locator("body.browsing").waitFor();
     await toolbar.locator("#browser-home").waitFor();
+    assert.equal(
+      context.pages().length,
+      2,
+      "Only Home and one remote child should exist; no floating toolbar",
+    );
+    for (const name of ["Home", "All applications", "Library", "Settings"]) {
+      assert.ok(
+        await main.getByRole("button", { name, exact: true }).isVisible(),
+      );
+    }
     if (target === fixtureUrl) await remote.locator("h1").waitFor();
     return { remote, toolbar };
   };
@@ -232,18 +239,16 @@ try {
       );
       await remote.locator("#popup").waitFor();
       result.checks.push("Retry invokes native original-target navigation");
-      await toolbar.screenshot({ path: path.join(testFolder, "toolbar.png") });
+      await main.screenshot({ path: path.join(testFolder, "workspace.png") });
+      await remote.screenshot({ path: path.join(testFolder, "remote.png") });
     }
     await toolbar
       .locator("#browser-home")
       .click({ noWaitAfter: true })
       .catch((error) => {
-        if (!toolbar.isClosed()) throw error;
+        if (!remote.isClosed()) throw error;
       });
-    await waitFor(
-      () => remote.isClosed() && toolbar.isClosed(),
-      "service/toolbar cleanup",
-    );
+    await waitFor(() => remote.isClosed(), "remote child cleanup");
     await main.locator("#home-view.active").waitFor();
     assert.equal(
       await main
@@ -253,7 +258,7 @@ try {
     );
   }
   result.checks.push(
-    "Ten real native open/Home/close cycles restore Home and keyboard focus",
+    "Ten real native child open/Home/close cycles restore Home and keyboard focus",
   );
   const https = await open("https://example.com");
   try {
@@ -293,27 +298,59 @@ try {
     .locator("#browser-home")
     .click({ noWaitAfter: true })
     .catch((error) => {
-      if (!https.toolbar.isClosed()) throw error;
+      if (!https.remote.isClosed()) throw error;
     });
-  await waitFor(
-    () => https.remote.isClosed() && https.toolbar.isClosed(),
-    "HTTPS service cleanup",
-  );
-  for (const label of ["service", "browser-controls"]) {
-    const windows = await open();
-    await main.evaluate(
-      (label) =>
-        window.__TAURI_INTERNALS__.invoke("plugin:window|close", { label }),
-      label,
+  await waitFor(() => https.remote.isClosed(), "HTTPS service cleanup");
+  for (const destination of ["apps", "library", "settings", "home"]) {
+    const { remote } = await open();
+    await main.locator(`.rail [data-view="${destination}"]`).first().click();
+    await waitFor(() => remote.isClosed(), "sidebar closes remote child");
+    await main.locator(`#${destination}-view.active`).waitFor();
+    await pause(150);
+    assert.ok(
+      await main.locator(`#${destination}-view`).isVisible(),
+      "Late Home event must not overwrite chosen destination",
     );
-    await waitFor(
-      () => windows.remote.isClosed() && windows.toolbar.isClosed(),
-      "native close request cleanup",
-    );
-    await main.locator("#home-view.active").waitFor();
   }
   result.checks.push(
-    "Native close requests for service and toolbar both restore Home",
+    "All four persistent sidebar destinations close the site and navigate to the chosen AURA view",
+  );
+  const fullscreen = await open();
+  const mainSize = await main.evaluate(() => ({
+    width: innerWidth,
+    height: innerHeight,
+  }));
+  const siteSize = await fullscreen.remote.evaluate(() => ({
+    width: innerWidth,
+    height: innerHeight,
+  }));
+  assert.ok(
+    Math.abs(mainSize.width - 90 - siteSize.width) <= 2,
+    "Remote width must reserve the sidebar",
+  );
+  assert.ok(
+    Math.abs(mainSize.height - 128 - siteSize.height) <= 2,
+    "Remote height must reserve the local header",
+  );
+  await fullscreen.remote.locator("#fullscreen").click();
+  await waitFor(
+    () => fullscreen.remote.evaluate(() => Boolean(document.fullscreenElement)),
+    "site fullscreen",
+  );
+  const fullscreenSize = await fullscreen.remote.evaluate(() => ({
+    width: innerWidth,
+    height: innerHeight,
+  }));
+  assert.ok(fullscreenSize.width <= mainSize.width - 88);
+  assert.ok(fullscreenSize.height <= mainSize.height - 126);
+  assert.ok(
+    await main.getByRole("button", { name: "Home", exact: true }).isVisible(),
+  );
+  await fullscreen.remote.evaluate(() => document.exitFullscreen());
+  await main.locator("#browser-home").click();
+  await waitFor(() => fullscreen.remote.isClosed(), "fullscreen site Home");
+  result.checks.push(
+    "Native child bounds reserve the rail/header, including a real site fullscreen request",
   );
   await main.locator('[data-view="settings"]').first().click();
   await main.locator("#exit-app").click();
