@@ -4,7 +4,7 @@ Record PASS / FAIL / BLOCKED / NOT RUN, build commit/hash, exact hardware/archit
 
 ## P0 — Functional baseline
 
-Compact browser controls follow-up (2026-10-21): browser tests PASS the 56px header, 44px icon target, no visible URL/status paragraph or duplicate Home/External buttons, bounded refresh IPC, and sidebar return at the 620px minimum width. The native suite now checks the actual 56px reserved website bounds and sidebar Home through repeated sessions/fullscreen. New native build/device results must be recorded separately from these browser checks.
+Compact browser controls follow-up (2026-10-21): browser tests PASS the 56px header, 44px icon target, no visible URL/status paragraph or duplicate Home/External buttons, bounded refresh IPC, and sidebar return at the 620px minimum width. The [exact x64 EXE](COMPACT_BAR_NATIVE_RESULT.json) separately passes fourteen native check statements including actual 56px reserved site bounds, icon-only refresh, sidebar Home through repeated sessions/fullscreen, security and usage. [CI source 3449214](https://github.com/cdou2391/media-launcher/actions/runs/39505309257) builds both architectures and passes their Rust/frontend checks. Physical Surface touch/DPI/rotation and ARM64 runtime remain NOT RUN.
 
 | Test                               | Expected result                                       | Status                                     |
 | ---------------------------------- | ----------------------------------------------------- | ------------------------------------------ |

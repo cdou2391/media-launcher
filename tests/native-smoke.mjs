@@ -315,6 +315,9 @@ try {
       );
       await remote.locator("#popup").waitFor();
       result.checks.push("Retry invokes native original-target navigation");
+      await main
+        .locator("#browser-workspace")
+        .screenshot({ path: path.join(testFolder, "header.png") });
       await main.screenshot({ path: path.join(testFolder, "workspace.png") });
       await remote.screenshot({ path: path.join(testFolder, "remote.png") });
     }

@@ -2,7 +2,7 @@
 
 A touch-first Windows media launcher built with Tauri 2, Rust, Vite and vanilla JavaScript. The cinematic dashboard, favorites, search, accent colors, keyboard navigation, fullscreen toggle and explicit Exit to Windows remain available.
 
-## Current development status — 2026-10-20
+## Current development status — 2026-10-21
 
 Phase 0 safeguards and Phase 1 application code are implemented. **Compatible websites now open beside AURA's existing sidebar; the floating control window is removed.** Both native architectures build and pass six Rust tests in CI. The x64 child-webview executable passes real WebView2 automation, including all sidebar destinations, site fullscreen bounds and 11 remote IPC denials. Physical Surface touch/DPI/rotation, ARM64 runtime and provider login/playback remain unverified.
 
@@ -17,7 +17,7 @@ The browser preview explains that internal/native windows require the Windows ap
 
 ## Home banner
 
-Download the tested Windows build from [AURA 0.1.0 Preview 1](https://github.com/cdou2391/media-launcher/releases/tag/v0.1.0-preview.1): standalone x64 AURA.exe, separate x64/ARM64 installers, checksums, launch instructions and build validation. The preview tag points to the exact tested source commit 6280746; all six uploaded asset digests match the local files.
+Download the updated Windows build from [AURA 0.1.0 Preview 2](https://github.com/cdou2391/media-launcher/releases/tag/v0.1.0-preview.2): standalone x64 AURA.exe, separate x64/ARM64 installers, checksums, launch instructions and build validation. It includes the 56px browser bar with only the service name and refresh icon. The preview tag points to the exact tested source commit 3449214; all six uploaded asset digests match the local files. [Compact-bar native evidence](docs/COMPACT_BAR_NATIVE_RESULT.json) records all fourteen native checks passing.
 
 The Home banner uses a locally bundled cinematic actor/singer collage, with the gold A retained as a sharp HTML/CSS overlay. Narrow layouts show the full artwork above the headline and keep the A visible. See [artwork, generation prompt and dimensions](docs/BANNER_ARTWORK.md). [CI source 6280746](https://github.com/cdou2391/media-launcher/actions/runs/39437904384) builds both Windows installers. The exact delivered x64 EXE passes the embedded-image SHA256/visible-A check and the full native WebView2 smoke suite; see [banner build evidence and binary hashes](docs/BANNER_NATIVE_RESULT.json). AURA-Banner-Test beside the repository contains AURA.exe, separate x64/ARM64 installers, checksums and test results. ARM64 runtime and physical Surface checks remain open.
 

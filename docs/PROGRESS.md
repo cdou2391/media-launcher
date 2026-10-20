@@ -4,17 +4,21 @@
 
 Phase 0 safeguards and Phase 1 application code are implemented. Both architectures build and pass Rust tests in CI; the x64 package passes real WebView2 automation. Phase exit gates remain OPEN for physical touch/fullscreen/DPI/rotation, ARM64 runtime, provider login/playback and remaining baseline local-file/app launch checks. No Phase 2+ feature was added.
 
-## Compact browser bar - implemented, native validation pending
+## Compact browser bar - built and x64 runtime validated
 
 Reduced the browsing header from 128px to 56px in both trusted CSS and native child bounds. It now shows the service name and one 44px refresh icon. Removed the URL, visible status paragraph, duplicate Home and Open externally buttons. Home/Apps/Library/Settings in the existing sidebar still close the site and restore the chosen AURA view. The icon retains Retry's original-shortcut navigation; it does not grant commands to remote sites. Launch-failure dialogs and External shortcut modes remain available.
 
 Status is retained in a visually hidden live region. Blocked/slow states highlight the icon and put the explanation in its tooltip; command failures also update accessible status. Focus moves to Refresh on entry, and it is disabled while a native action is in flight. Native messages refer to sidebar return instead of the removed controls.
 
-**Exact changed files:** index.html; src/main.js; src/style.css; src-tauri/src/browser.rs; tests/ui/controls.spec.js; tests/native-smoke.mjs; README.md; docs/ARCHITECTURE.md; docs/DECISIONS.md; docs/ACCEPTANCE_TESTS.md; docs/PROGRESS.md.
+**Exact changed files:** index.html; src/main.js; src/style.css; src-tauri/src/browser.rs; tests/ui/controls.spec.js; tests/native-smoke.mjs; README.md; docs/ARCHITECTURE.md; docs/DECISIONS.md; docs/ACCEPTANCE_TESTS.md; docs/PROGRESS.md; docs/COMPACT_BAR_NATIVE_RESULT.json (new).
 
-**Actual checks so far:** lint/format, 22 Node/config tests, Vite production build and all 16 Chrome-preview tests PASS. Direct installed rustfmt check on browser.rs PASS; the rustup wrapper attempted a network sync in the restricted environment, so the installed formatter was used. Visually checked the browser-preview toolbar at 1400px and 620px widths: header 56px, refresh target 44 × 44, one-line title and no URL/message row. Native tests were updated for the new reserved bounds, refresh icon and sidebar Home. A new Windows CI/native test build is pending; earlier EXEs and the published preview do not yet include this change.
+**Actual checks:** lint/format, 22 Node/config tests, Vite production build and all 16 Chrome-preview tests PASS. Direct installed rustfmt check on browser.rs PASS; the rustup wrapper attempted a network sync in the restricted environment, so the installed formatter was used. Visually checked the browser-preview toolbar at 1400px and 620px widths: header 56px, refresh target 44 × 44, one-line title and no URL/message row. [CI source 3449214](https://github.com/cdou2391/media-launcher/actions/runs/39505309257) independently passes frontend/browser checks and six Rust tests on x64 and ARM64, then builds both installers. Both downloaded artifact archive digests and extracted executable architectures were verified.
 
-**Next:** build both architectures and run the updated native x64 suite before handing over a new test EXE. Physical Surface/ARM64 runtime checks remain open.
+**Exact delivered x64 EXE:** Windows 10.0.26200 / WebView2 155.0.4283.62 PASS all fourteen native check statements, including the actual 56px header, 44px icon-only refresh target, removed URL/Home/External controls, original-shortcut refresh request, 56px reserved site bounds during fullscreen, ten sidebar Home cycles, all four sidebar destinations, HTTPS, 12 remote IPC denials, usage/minimize/restore and full restart persistence. Visually inspected the real packaged toolbar screenshot. Native automation used an isolated profile and did not run an installer. AURA-Compact-Bar-Test beside the repository contains the exact tested AURA.exe, separate x64/ARM64 installers, checksums, instructions, native screenshot and [build evidence](COMPACT_BAR_NATIVE_RESULT.json). Follow-up changes only capture a test screenshot and update evidence/documentation; production/build inputs remain identical to source 3449214.
+
+**Published:** [AURA 0.1.0 Preview 2](https://github.com/cdou2391/media-launcher/releases/tag/v0.1.0-preview.2) contains the tested standalone EXE, separate x64/ARM64 installers, SHA256SUMS.txt, BUILD-VALIDATION.json and README.txt. All six server asset digests/sizes match their local files; the public EXE download returns HTTP 200. The tag resolves to exact build source 3449214. Preview 1 and older local test folders are retained.
+
+**Next / unverified:** test the compact bar and sidebar by touch on Surface, including actual DPI/rotation changes. ARM64 runtime, provider playback and installer install/uninstall remain open.
 
 ## Published Windows preview release
 
