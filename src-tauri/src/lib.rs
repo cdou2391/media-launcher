@@ -49,13 +49,7 @@ pub fn run() {
                     tauri::WindowEvent::Resized(_) | tauri::WindowEvent::ScaleFactorChanged { .. }
                 )
             {
-                // Creation/resize callbacks can run while Tauri owns its webview
-                // registry lock. Querying it here deadlocks initial WebView2
-                // startup; defer the lookup and native getters off the UI callback.
-                let app = window.app_handle().clone();
-                tauri::async_runtime::spawn(async move {
-                    let _ = browser::resize_service(&app);
-                });
+                let _ = browser::resize_service(window.app_handle());
             }
             if window.label() == "main" && matches!(event, tauri::WindowEvent::Destroyed) {
                 window.app_handle().exit(0);

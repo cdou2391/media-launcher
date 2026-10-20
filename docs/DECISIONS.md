@@ -2,7 +2,7 @@
 
 ## ADR-008 — Retain the AURA sidebar with an isolated child webview
 
-**Status:** Experiment in progress (2026-10-20); supersedes ADR-005's floating controls.
+**Status:** Implemented; x64 native automation and both CI builds PASS (2026-10-20); physical acceptance open. Supersedes ADR-005's floating controls.
 
 The stable-window spike was built and exercised on Windows. The user's actual YouTube screenshot shows the separate owned control window obscuring a large portion of the site. The user requested AURA's existing side navigation while browsing. Separate top-level windows cannot deliver a shared native sidebar without brittle window positioning/overlays, so the stable spike has demonstrated a concrete UX deficiency.
 
@@ -10,7 +10,7 @@ Prototype one remote child webview in the existing main native window, reserving
 
 Child creation uses Tauri's documented but unstable API, explicitly enabled through Cargo feature `embedded-browser` (default), with Tauri pinned to 2.12.4. Disabling default features disables internal browsing with an external fallback message. Creation remains in async commands. Native resize/DPI handling uses logical bounds, independent of remote page layout. Native open/close/retry operations serialize to avoid shared-label lifecycle races.
 
-Validate this small Windows spike with remote IPC attempts (including a local URL under the remote label), sidebar navigation, repeated sessions, resizing, site fullscreen, and restart persistence before shipping a replacement EXE. CI builds and physical touch/rotation acceptance must be recorded separately. API evidence: installed tauri-2.12.4 `Window::add_child`, `Webview::set_bounds`, and `WebviewWindow` command conversion; [Tauri capabilities](https://v2.tauri.app/security/capabilities/).
+The [x64 native spike](SIDEBAR_NATIVE_RESULT.json) passes 11 remote ACL denials, blocked privileged-origin navigation, all sidebar destinations, ten sessions, site fullscreen bounds and restart persistence. Both architecture installers build and pass six Rust tests in CI. Actual DPI/rotation/multi-monitor resizing and touch hit-testing remain physical acceptance gates. CI builds and physical touch/rotation acceptance must be recorded separately. API evidence: installed tauri-2.12.4 `Window::add_child`, `Webview::set_bounds`, and `WebviewWindow` command conversion; [Tauri capabilities](https://v2.tauri.app/security/capabilities/).
 
 ## ADR-001 — Preserve Tauri 2 starter and dual-architecture Windows packaging
 
