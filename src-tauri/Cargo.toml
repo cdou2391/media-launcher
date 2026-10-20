@@ -1,0 +1,19 @@
+[package]
+name = "aura-home-media"
+version = "0.1.0"
+description = "Touch-first Surface media launcher"
+authors = ["AURA"]
+edition = "2021"
+
+[lib]
+name = "aura_home_media_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
