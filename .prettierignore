@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.tools/
+src-tauri/target/
+src-tauri/gen/
+package-lock.json
+Cargo.lock
+test-results/
+playwright-report/
+AGENTS.md
+CLAUDE_CODEX_START_HERE.md
+IMPLEMENTATION_PLAN.md

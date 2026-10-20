@@ -2,7 +2,12 @@ name: Build Windows installers
 on:
   workflow_dispatch:
   push:
-    tags: ['v*']
+    branches: ["main"]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   windows-installers:
@@ -21,14 +26,26 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "22"
       - uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: "1.99.1"
           targets: ${{ matrix.target }}
+          components: rustfmt, clippy
       - name: Install JS dependencies
-        run: npm install
+        run: npm ci
+      - name: Frontend checks
+        run: npm run check
+      - name: Install test browser
+        run: npx playwright install chromium
+      - name: Browser preview tests
+        run: npm run test:ui
+      - name: Rust checks
+        run: |
+          cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+          cargo test --manifest-path src-tauri/Cargo.toml --locked --target ${{ matrix.target }}
       - name: Build architecture-specific installer
-        run: npm run tauri:build -- --target ${{ matrix.target }}
+        run: npm run tauri:build -- --target ${{ matrix.target }} -- --locked
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:

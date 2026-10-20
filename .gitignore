@@ -7,3 +7,7 @@ dist/
 src-tauri/target/
 .DS_Store
 *.log
+.tools/
+test-results/
+playwright-report/
+src-tauri/gen/

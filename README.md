@@ -1,97 +1,55 @@
-# AURA Home Media — Surface Windows Launcher (0.1.0)
+# AURA Home Media
 
-A touch-first, distraction-free launcher for Windows tablets including Microsoft Surface Pro, Surface Go, and Surface Laptop families. One project, two native Windows build targets: Intel/AMD x64 and ARM64 (Microsoft SQ / Snapdragon).
+A touch-first Windows media launcher built with Tauri 2, Rust, Vite and vanilla JavaScript. The cinematic dashboard, favorites, search, accent colors, keyboard navigation, fullscreen toggle and explicit Exit to Windows remain available.
 
-## What works in this starter
+## Current development status — 2026-10-20
 
-- Responsive cinematic dashboard for large and small screens, portrait and landscape.
-- Favorites and an editable app shortcut collection. Add HTTP(S) URLs or absolute Windows paths to `.exe`, `.lnk`, `.url`, and common media files.
-- Opens configured URLs in the default browser and local apps through Windows ShellExecute in a Tauri build.
-- Search, accent colors, live local clock, keyboard arrow navigation, fullscreen toggle, and safe exit to Windows.
-- Local-only settings and shortcut persistence (WebView storage).
-- Runs in a normal browser as a UI preview: URLs work; Windows executable paths require desktop build.
+Phase 0 frontend safeguards and Phase 1 application code are implemented. **The native service-window experience is an unverified proof of concept, not a completed Surface release.** Local native compilation stops at the missing MSVC linker. There is no verified installer, native IPC test or provider playback result in this delivery.
 
-## Not implemented in v0.1.0
+- Versioned v2 shortcuts retain v1 favorites, custom targets, colors and marks. Migration keeps the original v1 key and a backup. Unreadable or future-version data is preserved; a visible notice explains session-only changes.
+- Add or edit each shortcut's Auto / Inside AURA / External mode. Tiles show the chosen destination. Windows apps and media files always launch externally.
+- Auto tries ordinary HTTP(S) websites in an AURA-owned native service window. Netflix, Disney+, Prime Video/Amazon and Spotify default to External because embedded authentication/protected playback has not been verified. Explicit Internal overrides show the compatibility limitation.
+- Internal browsing uses stable WebviewWindow plus a separate local control window owned by the remote window. The control window contains **Return to AURA Home**, Retry and Open externally, with 48px buttons. Native close controls offer another return path. Ownership, fullscreen, rotation, DPI, task switching and touch still require Windows acceptance testing.
+- Remote pages have no AURA command capabilities. Native commands independently check the caller's label, origin and route. Remote navigation to local asset/IPC origins, popups and downloads is blocked. No AURA scripts or credentials are injected into service pages.
+- HTTPS is preferred. HTTP requires explicit consent per shortcut, including after v1 migration. Settings must not contain credentials. Normal website sessions are managed by WebView2; AURA does not copy browser cookies or bypass provider restrictions.
 
-- No automatic Plex/Jellyfin continue-watching synchronization or media-server library aggregation.
-- No automatic discovery of installed Windows apps.
-- No built-in video playback, DRM service integrations, or brightness/battery/Wi-Fi controls.
-- No auto-start toggle or automatic update mechanism. Windows startup integration can be configured outside AURA using a Start-menu shortcut and `shell:startup`.
-- The default Jellyfin shortcut points to `http://localhost:8096`; change it to the address of your actual media server.
+The browser preview explains that internal/native windows require the Windows app and offers an explicit external-tab fallback. It does not simulate successful native browsing.
 
-## Requirements
+## Develop and verify
 
-**For end users:** Windows 11 x64 or ARM64, Microsoft Edge WebView2 runtime (on most Windows 11 systems already available). Windows 10 compatibility is best-effort and should be verified separately. Not for Surface RT / Windows RT.
-
-**For development:** Node.js 22+, npm, Rust stable, Visual Studio C++ build tools with Windows SDK, and Tauri prerequisites. ARM64 cross-builds on x64 machines require the Visual Studio ARM64 C++ build tools.
-
-## Browser preview
+Install Node.js 22.13+ (or newer LTS), npm, Rust 1.99.1, Visual Studio C++ build tools with the Windows SDK, and WebView2. Use the x64/ARM64 C++ components matching your target. The checked-in toolchain file selects Rust; both dependency lockfiles are committed.
 
 ```powershell
-npm install
-npm run dev
-```
-
-Open the displayed localhost URL in a browser. This previews the UI but cannot launch native executable paths.
-
-## Local Windows app testing
-
-```powershell
-npm install
+npm ci
+npm run check
+npx playwright install chromium
+npm run test:ui
+cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+cargo test --manifest-path src-tauri/Cargo.toml --locked
 npm run tauri:dev
 ```
 
-## Build installers
+For an existing Chrome installation, set `$env:PLAYWRIGHT_CHANNEL = 'chrome'` before the browser tests. `npm run dev` serves the UI preview at http://127.0.0.1:5173; that port is fixed to keep the native trusted-origin boundary precise. Stop the preview before starting `tauri:dev`.
 
-Intel / AMD 64-bit:
+Local verification used Windows x64, Node 24.19.0, Rust 1.99.1 and headless Chrome. At the last recorded run, lint/format, 14 unit/configuration tests, the Vite production build and 10 browser tests passed. Rust formatting passed. `cargo check` and `tauri:dev` could not compile because `link.exe` is unavailable. These are separate from native Windows/Surface tests. See [progress](docs/PROGRESS.md) and the [native spike checklist](docs/PHASE_1_SPIKE.md).
 
-```powershell
-rustup target add x86_64-pc-windows-msvc
-npm run tauri:build -- --target x86_64-pc-windows-msvc
-```
-
-Windows ARM64 (Surface Pro X, Surface Pro 11 Snapdragon):
+## Build separate Windows installers
 
 ```powershell
-rustup target add aarch64-pc-windows-msvc
-npm run tauri:build -- --target aarch64-pc-windows-msvc
+rustup target add x86_64-pc-windows-msvc aarch64-pc-windows-msvc
+npm ci
+npm run tauri:build -- --target x86_64-pc-windows-msvc -- --locked
+npm run tauri:build -- --target aarch64-pc-windows-msvc -- --locked
 ```
 
-Look under `src-tauri/target/<target>/release/bundle/nsis/` for the installer.
+Installers are written under `src-tauri/target/<target>/release/bundle/nsis/`. ARM64 cross-compilation requires the ARM64 MSVC components. The Windows workflow uses independent x64 and ARM64 runners, runs frontend/Rust tests with locked dependencies, then builds the corresponding installers. CI configuration is not evidence of a successful run or hardware test.
 
-## Automated GitHub build
+## Use the proof of concept
 
-Push the project to a GitHub repository and run **Actions → Build Windows installers → Run workflow**. The included pipeline creates two installer artifacts, one on a Windows x64 runner and one on a native Windows ARM64 runner. CI build success requires all dependencies and Tauri CLI versions to be compatible with the runner image.
+1. Open All applications and edit a shortcut, or add `https://example.com` in Internal mode. For Jellyfin, enter your own server URL; explicitly allow HTTP if necessary. The default localhost:8096 entry requires that consent before launching.
+2. In the native app, launch the shortcut. A remote service window and separate AURA controls should appear. Home hides only after both windows have been created.
+3. Use Return to AURA Home to close the service and return to the Home view. Retry reloads the original shortcut. Open externally opens that same original URL in the default browser and restores Home.
+4. A blocked popup, slow load, unsupported login or playback can use the visible external fallback. A page-finished event is not proof of successful login or playback. A failed window creation leaves Home available with an error and fallback dialog.
+5. Exit using Settings → Exit launcher. AURA does not replace Explorer or enforce kiosk mode.
 
-**Note:** The `.exe` installers are not already present in this source bundle. This starter was authored and JavaScript-checked in a Linux environment, so Windows native compilation and device testing remain to be performed.
-
-## Installation and startup
-
-Install the correct architecture-specific setup executable, then find **AURA Home Media** in the Start menu. To launch at Windows sign-in, press `Win+R`, enter `shell:startup`, and add a shortcut to AURA. To return to Windows use **Settings → Exit launcher**; AURA does not replace Explorer or make kiosk restrictions.
-
-## Security design
-
-The Rust command only accepts HTTP(S) URLs or absolute Windows paths with a restricted file extension list, avoiding command-shell string concatenation. Users can add shortcuts to any local executable matching these rules, so use it as a personal launcher rather than a multi-user lockdown/kiosk product. Settings are stored locally, no account or analytics backend is included.
-
-## Next development phases
-
-1. Native app discovery via Start-menu shortcut enumeration and thumbnail extraction.
-2. Jellyfin and Plex adapters for library discovery and continue watching, with optional credentials stored in Windows Credential Manager.
-3. Profile layouts, hardware-adaptive touch controls, and Windows startup configuration.
-4. Signed installers, release management, and automated update support.
-
----
-
-## Implementation plan for Claude Code / Codex (2026-10-20)
-
-This ZIP also includes a **development handoff package** describing how to evolve the current 0.1.0 starter into a unified, secure, touch-first media experience:
-
-1. [`CLAUDE_CODEX_START_HERE.md`](CLAUDE_CODEX_START_HERE.md) — copyable agent prompt and next task.
-2. [`AGENTS.md`](AGENTS.md) — coding agent rules and safe implementation constraints.
-3. [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) — complete scope, phases, delivery/acceptance gates.
-4. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — trust boundaries, routing, embedded webview design.
-5. [`docs/DECISIONS.md`](docs/DECISIONS.md) — ADRs and trade-offs.
-6. [`docs/ACCEPTANCE_TESTS.md`](docs/ACCEPTANCE_TESTS.md) — test scenarios and device matrix.
-7. [`docs/PROGRESS.md`](docs/PROGRESS.md) — living phase/status tracker.
-
-**Implementation status:** The new in-app webview experience is *planned, not implemented* in the supplied source. Websites still open in the default browser until Phase 1 is implemented. The existing GitHub Actions file describes builds but this delivery does not include or verify native installers.
+No automatic app discovery, Jellyfin/Plex synchronization, aggregated Continue Watching, built-in media playback or updater has been added. Phase 2 and later remain out of scope. The next release gate is native x64/ARM64 build verification followed by the physical touch/return-navigation and remote IPC negative tests in [the acceptance matrix](docs/ACCEPTANCE_TESTS.md).
