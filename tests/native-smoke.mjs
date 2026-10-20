@@ -194,6 +194,9 @@ try {
           ["browser_retry", {}],
           ["browser_external", {}],
           ["plugin:window|close", { label: "main" }],
+          ["plugin:window|set_fullscreen", { label: "main", value: false }],
+          ["plugin:webview|close", { label: "main" }],
+          ["plugin:event|emit", { event: "aura-home", payload: null }],
         ];
         const denied = [];
         for (const [command, args] of cases) {
