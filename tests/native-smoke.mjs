@@ -193,6 +193,7 @@ try {
           ["browser_home", {}],
           ["browser_retry", {}],
           ["browser_external", {}],
+          ["usage_foreground", {}],
           ["plugin:window|close", { label: "main" }],
           ["plugin:window|set_fullscreen", { label: "main", value: false }],
           ["plugin:webview|close", { label: "main" }],
@@ -355,6 +356,88 @@ try {
   result.checks.push(
     "Native child bounds reserve the rail/header, including a real site fullscreen request",
   );
+  await main.evaluate((target) => {
+    const data = JSON.parse(localStorage.getItem("aura-shortcuts-v2"));
+    data.shortcuts.push({
+      id: "usage-fixture",
+      title: "Usage fixture",
+      target,
+      kind: "website",
+      category: "other",
+      favorite: false,
+      launchMode: "internal",
+      allowHttp: true,
+      color: "#123456",
+      mark: "U",
+    });
+    localStorage.setItem("aura-shortcuts-v2", JSON.stringify(data));
+  }, fixtureUrl);
+  await main.reload();
+  const launchUsage = async () => {
+    await main.locator('.rail [data-view="apps"]').click();
+    await main
+      .locator("#all-apps .tile")
+      .filter({ hasText: "Usage fixture" })
+      .click();
+    await main.locator("body.browsing").waitFor();
+  };
+  await launchUsage();
+  const nativeUsageContext = await main.evaluate(() =>
+    window.__TAURI_INTERNALS__.invoke("browser_status"),
+  );
+  assert.equal(nativeUsageContext.shortcutId, "usage-fixture");
+  assert.ok(nativeUsageContext.sessionId > 0);
+  assert.equal(
+    await main.evaluate(() =>
+      window.__TAURI_INTERNALS__.invoke("usage_foreground"),
+    ),
+    true,
+    "AURA must be foreground to validate foreground timing",
+  );
+  await pause(6500);
+  await main.locator('.rail [data-view="settings"]').click();
+  await main.locator("#usage-enabled").uncheck();
+  const usageBefore = await main.evaluate(() =>
+    JSON.parse(localStorage.getItem("aura-usage-v1")),
+  );
+  const timed = usageBefore.shortcuts.find((s) => s.id === "usage-fixture");
+  assert.equal(timed.internalLaunches, 1);
+  assert.ok(
+    timed.internalMs >= 2000,
+    "Actual remote-child foreground time must accrue",
+  );
+  await launchUsage();
+  await pause(1500);
+  await main.locator('.rail [data-view="settings"]').click();
+  const pausedUsage = await main.evaluate(() =>
+    JSON.parse(localStorage.getItem("aura-usage-v1")),
+  );
+  assert.deepEqual(
+    pausedUsage,
+    usageBefore,
+    "Paused usage must not count launches or time",
+  );
+  await main.locator("#usage-clear").click();
+  await main.locator("#usage-cancel").click();
+  assert.ok(
+    (await main.locator("#usage-rows").innerText()).includes("Usage fixture"),
+  );
+  await main.locator("#usage-clear").click();
+  await main.locator("#usage-clear-confirm").click();
+  assert.equal(await main.locator("#usage-rows tr").count(), 0);
+  await main.locator("#usage-enabled").check();
+  await launchUsage();
+  await pause(3000);
+  await main.locator('.rail [data-view="settings"]').click();
+  await main.locator("#usage-enabled").uncheck();
+  result.usage = await main.evaluate(() =>
+    JSON.parse(localStorage.getItem("aura-usage-v1")),
+  );
+  assert.equal(result.usage.shortcuts[0].internalLaunches, 1);
+  assert.ok(result.usage.shortcuts[0].internalMs > 0);
+  result.checks.push(
+    "Native usage tracks the identified remote child in foreground; pause, clear/cancel and per-shortcut counts work",
+  );
   await main.locator('[data-view="settings"]').first().click();
   await main.locator("#exit-app").click();
   await waitFor(
@@ -406,6 +489,15 @@ try {
   assert.equal(persisted.shortcut.color, "#123456");
   assert.equal(persisted.shortcut.mark, "M");
   assert.equal(persisted.accent, "blue");
+  const persistedUsage = await restarted.evaluate(() =>
+    JSON.parse(localStorage.getItem("aura-usage-v1")),
+  );
+  assert.deepEqual(persistedUsage, result.usage);
+  await restarted.locator('.rail [data-view="settings"]').click();
+  assert.equal(await restarted.locator("#usage-enabled").isChecked(), false);
+  result.checks.push(
+    "Usage totals and paused preference survive a complete native process restart",
+  );
   result.checks.push(
     "Favorites, shortcut display values and accent survive a full native process restart",
   );

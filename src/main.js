@@ -9,6 +9,7 @@ import {
   normalizeShortcut,
 } from "./services/shortcuts.js";
 import { launchRoute, routeLabel } from "./services/launch-router.js";
+import { setupUsage } from "./components/usage-panel.js";
 
 const ACCENT_KEY = "aura-accent-v1";
 let storage;
@@ -25,11 +26,19 @@ let pendingLaunch = null;
 let launching = false;
 let homeNavigationReady = !native;
 let browsing = false;
+let browserContext = null;
 let browserActionBusy = false;
 let returnView = "home";
 let view = "home";
 let query = "";
 let toastHandle;
+const usage = setupUsage({
+  storage,
+  getShortcuts: () => apps,
+  getBrowser: () => browserContext,
+  native,
+  invoke,
+});
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 const accent = readPreference(storage, ACCENT_KEY, "sand");
@@ -106,10 +115,13 @@ async function launch(app, mode) {
         kind: shortcut.kind,
         launchMode: shortcut.launchMode,
         allowHttp: shortcut.allowHttp,
+        shortcutId: shortcut.id,
       });
+      usage.launch(shortcut, result.mode);
       toast(result.reason);
     } else {
       window.open(shortcut.target, "_blank", "noopener,noreferrer");
+      usage.launch(shortcut, "external");
       toast(route.reason + " Browser preview: opened a separate tab.");
     }
   } catch (error) {
@@ -272,9 +284,12 @@ function setView(next) {
   query = "";
   $("#search-box").value = "";
   render();
+  if (next === "settings") usage.render();
   window.scrollTo({ top: 0, behavior: "instant" });
 }
 function leaveBrowser() {
+  browserContext = null;
+  usage.contextChanged();
   browsing = false;
   document.body.classList.remove("browsing");
   $("#browser-workspace").classList.add("hidden");
@@ -289,6 +304,8 @@ async function refreshBrowser() {
       setView("home");
       return;
     }
+    if (browserContext?.sessionId !== current.sessionId) usage.contextChanged();
+    browserContext = current;
     $("#service-title").textContent = current.title;
     $("#service-origin").textContent = current.origin;
     $("#service-origin").title = current.origin;
@@ -311,8 +328,13 @@ async function browserAction(action, destination = "home") {
   if (!browsing || browserActionBusy) return;
   browserActionBusy = true;
   returnView = destination;
+  const externalShortcut = browserContext?.shortcutId
+    ? { id: browserContext.shortcutId, title: browserContext.title }
+    : null;
   try {
     await invoke(`browser_${action}`);
+    if (action === "external" && externalShortcut)
+      usage.launch(externalShortcut, "external");
     if (action !== "retry") {
       leaveBrowser();
       setView(destination);
@@ -457,6 +479,7 @@ $("#toggle-fullscreen").addEventListener("click", async () => {
 $("#exit-app").addEventListener("click", async () => {
   try {
     if (native) {
+      usage.flush();
       await getCurrentWindow().close();
     } else {
       toast("Close this browser tab to leave the preview.");

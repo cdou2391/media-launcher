@@ -13,6 +13,8 @@ use tauri::{
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BrowserStatus {
+    pub session_id: u64,
+    pub shortcut_id: Option<String>,
     pub title: String,
     pub origin: String,
     pub phase: String,
@@ -160,6 +162,7 @@ pub async fn open_internal(
     target: String,
     title: String,
     allow_http: bool,
+    shortcut_id: Option<String>,
 ) -> Result<(), String> {
     security::authorize(&window, true)?;
     let state = app.state::<BrowserState>();
@@ -185,6 +188,10 @@ pub async fn open_internal(
             allow_http,
             changed: Instant::now(),
             status: BrowserStatus {
+                session_id: id,
+                shortcut_id: shortcut_id.filter(|id| {
+                    !id.is_empty() && id.len() <= 128 && !id.chars().any(char::is_control)
+                }),
                 title: title.clone(),
                 origin: url.origin().ascii_serialization(),
                 phase: "loading".into(),
@@ -349,6 +356,8 @@ mod tests {
     #[test]
     fn cancelled_load_completion_keeps_navigation_or_popup_warning() {
         let mut status = BrowserStatus {
+            session_id: 1,
+            shortcut_id: None,
             title: "Fixture".into(),
             origin: "https://example.com".into(),
             phase: "blocked".into(),

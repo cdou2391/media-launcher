@@ -4,6 +4,14 @@
 
 Phase 0 safeguards and Phase 1 application code are implemented. Both architectures build and pass Rust tests in CI; the x64 package passes real WebView2 automation. Phase exit gates remain OPEN for physical touch/fullscreen/DPI/rotation, ARM64 runtime, provider login/playback and remaining baseline local-file/app launch checks. No Phase 2+ feature was added.
 
+## Usage tracking in Settings - in progress
+
+Implemented the user's requested local usage view: overall AURA foreground time, internal-site time, per-shortcut launch counts and last launch, persistent tracking toggle, and separately confirmed history clear. External launches show duration Unavailable rather than guessing time outside AURA. No targets, browsing history, credentials or analytics requests are recorded. A narrow native command checks only AURA's foreground HWND, including while its remote child has focus. Optional shortcut ID/session metadata links native service time to the correct shortcut.
+
+Versioned usage storage is separate from settings. Pausing stops counts/time; clear preserves shortcuts/preferences. Corrupt/future data is preserved and paused; unavailable storage retains session totals with a notice. One-second sampling drops long gaps/clock discontinuities; five-second checkpoints plus lifecycle flushes limit crash loss without backfilling a restart.
+
+Changed files: index.html; src/main.js; src/style.css; src/components/usage-panel.js (new); src/services/usage.js (new); src-tauri/src/lib.rs; src-tauri/src/browser.rs; src-tauri/src/usage.rs (new); src-tauri/build.rs; src-tauri/capabilities/default.json; tests/usage.test.js (new); tests/ui/usage.spec.js (new); tests/native-smoke.mjs; README.md; docs/DECISIONS.md; docs/PROGRESS.md. Local lint/format, production build, 22 Node/config tests and 16 Chrome-preview tests PASS. Windows compilation/runtime tests for this addition remain pending; old sidebar evidence is not a usage test. Physical touch/DPI/rotation, ARM64 runtime and provider playback remain open.
+
 ## Persistent sidebar follow-up � implemented and x64 runtime validated
 
 The user's Windows screenshot showed the floating return panel obscuring YouTube. ADR-008 records that stable-spike deficiency and the explicit `embedded-browser` child-webview experiment, pinned to Tauri 2.12.4. The remote child reserves the existing 90px sidebar and 128px trusted header in the main window. All four rail destinations close the service and open the chosen AURA view. The former browser.html, controls JS/CSS and controls capability are removed. Native command checks inspect the invoking Webview and grants target only the exact local `main` webview, never the shared window. Native mutations serialize; resize/DPI bounds preserve chrome.

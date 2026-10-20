@@ -69,3 +69,11 @@ This Windows-only test launches that executable with a unique WebView2 profile a
 Build normally to enable the `embedded-browser` Cargo feature. For an external-only build that avoids Tauri's unstable child API, use `npm run tauri:build -- --no-default-features -- --locked`; explicit Internal then reports that it is disabled and offers External. No remote webview receives a window-wide capability grant: permissions target only the bundled `main` webview, with native caller label/origin checks as a second boundary. Site login/playback limitations and DRM fallback policy are unchanged.
 
 Run the native smoke test with normal Windows desktop permissions. The restricted agent tool sandbox prevented WebView2 startup in the first attempt; the same executable passed with normal desktop permissions. A failed sandbox launch is recorded separately from application/runtime failures.
+
+## Usage in Settings
+
+Settings now shows AURA foreground time, time in internal websites, launch counts and last launch per shortcut. Track usage is on by default, stays on this device, can be paused, and has a separate Clear history action with confirmation. Clearing usage keeps shortcuts, favorites and appearance preferences.
+
+Only time inside AURA is measured. External applications/browser tabs have launch counts with duration marked Unavailable (external). Foreground time includes passive viewing and does not establish playback or active attention. Samples exclude background/minimized intervals and long timer/sleep gaps; restart never backfills closed-app time. A crash may lose the last five seconds. No URLs, page history, credentials or external app identities are collected. Corrupt/future history is preserved with tracking paused until explicit clear. Preview measurements apply to the preview, not the native app.
+
+Validation for this addition: 22 Node/config tests and 16 Chrome-preview tests PASS; native builds/runtime checks are being run separately. Earlier sidebar binary evidence does not validate the usage addition.

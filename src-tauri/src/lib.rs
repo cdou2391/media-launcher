@@ -2,6 +2,7 @@ mod browser;
 mod launch;
 mod policy;
 mod security;
+mod usage;
 
 use tauri::{webview::NewWindowResponse, Manager, Webview, WebviewWindowBuilder};
 
@@ -20,11 +21,12 @@ async fn launch_shortcut(
     kind: String,
     launch_mode: String,
     allow_http: bool,
+    shortcut_id: Option<String>,
 ) -> Result<policy::Route, String> {
     security::authorize(&window, true)?;
     let route = policy::route(&target, &kind, &launch_mode, allow_http)?;
     if route.mode == "internal" {
-        browser::open_internal(window, app, target, title, allow_http).await?;
+        browser::open_internal(window, app, target, title, allow_http, shortcut_id).await?;
     } else {
         launch::open_external(&target, allow_http)?;
     }
@@ -62,7 +64,8 @@ pub fn run() {
             browser::browser_status,
             browser::browser_home,
             browser::browser_retry,
-            browser::browser_external
+            browser::browser_external,
+            usage::usage_foreground
         ])
         .run(tauri::generate_context!())
         .expect("Failed to start AURA Home Media");
