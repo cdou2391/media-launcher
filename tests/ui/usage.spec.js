@@ -71,9 +71,14 @@ test("Settings counts internal foreground time, pauses while backgrounded, and r
     window.appForeground = false;
   });
   await page.clock.runFor(6000);
-  const after = await stored(page);
-  expect(after.shortcuts[0].internalMs).toBeLessThanOrEqual(
-    before.shortcuts[0].internalMs + 1000,
+  // Allow the next checkpoint to persist foreground time earned before the
+  // switch, then compare two settled background checkpoints exactly.
+  const inactiveStart = await stored(page);
+  await page.clock.runFor(6000);
+  const inactiveEnd = await stored(page);
+  expect(inactiveEnd.auraMs).toBe(inactiveStart.auraMs);
+  expect(inactiveEnd.shortcuts[0].internalMs).toBe(
+    inactiveStart.shortcuts[0].internalMs,
   );
   await settings(page);
   await expect(
@@ -141,7 +146,11 @@ test("failed launch does not add usage and malformed history is preserved", asyn
     "Fixture launch failed",
   );
   expect((await stored(page))?.shortcuts ?? []).toEqual([]);
-  await page.evaluate(() => localStorage.setItem("aura-usage-v1", "{broken"));
+  // Seed corruption after the old document's legitimate pagehide flush, before
+  // the new document reads storage. Mutating it before reload races that flush.
+  await page.addInitScript(() =>
+    localStorage.setItem("aura-usage-v1", "{broken"),
+  );
   await page.reload();
   await settings(page);
   await expect(page.locator("#usage-notice")).toContainText(

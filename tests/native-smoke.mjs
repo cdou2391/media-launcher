@@ -37,6 +37,49 @@ const port = portProbe.address().port;
 await new Promise((resolve) => portProbe.close(resolve));
 const testFolder = path.resolve(".tools/native-smoke-" + Date.now());
 fs.mkdirSync(testFolder, { recursive: true });
+const visibilityHelper = path.join(testFolder, "own-window.ps1");
+fs.writeFileSync(
+  visibilityHelper,
+  `param([int]$AuraPid, [string]$ExpectedExe, [int]$Show)
+$ErrorActionPreference = 'Stop'
+$auraProcess = Get-Process -Id $AuraPid
+if ($auraProcess.Path -ne $ExpectedExe) { throw 'Unexpected test process; refusing window operation' }
+$auraProcess.Refresh()
+$auraWindowHandle = $auraProcess.MainWindowHandle
+if ($auraWindowHandle -eq [IntPtr]::Zero) { throw 'Test application has no native window' }
+Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class AuraTestWindow { [DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr hwnd, int show); [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hwnd); }'
+[void][AuraTestWindow]::ShowWindowAsync($auraWindowHandle, $Show)
+if ($Show -eq 9) { [void][AuraTestWindow]::SetForegroundWindow($auraWindowHandle) }
+`,
+);
+async function ownWindowVisibility(show) {
+  await new Promise((resolve, reject) => {
+    const helper = spawn(
+      "powershell.exe",
+      [
+        "-NoProfile",
+        "-NonInteractive",
+        "-File",
+        visibilityHelper,
+        String(child.pid),
+        executable,
+        String(show),
+      ],
+      { windowsHide: true, stdio: "pipe" },
+    );
+    let output = "";
+    helper.stdout.on("data", (data) => {
+      output += data;
+    });
+    helper.stderr.on("data", (data) => {
+      output += data;
+    });
+    helper.on("error", reject);
+    helper.on("exit", (code) =>
+      code === 0 ? resolve() : reject(new Error(output)),
+    );
+  });
+}
 let child = spawn(executable, [], {
   windowsHide: true,
   stdio: "pipe",
@@ -395,6 +438,38 @@ try {
     "AURA must be foreground to validate foreground timing",
   );
   await pause(6500);
+  await ownWindowVisibility(6);
+  await waitFor(
+    async () =>
+      !(await main.evaluate(() =>
+        window.__TAURI_INTERNALS__.invoke("usage_foreground"),
+      )),
+    "minimized AURA is not foreground",
+  );
+  await pause(1200);
+  const minimizedStart = await main.evaluate(() =>
+    JSON.parse(localStorage.getItem("aura-usage-v1")),
+  );
+  await pause(6000);
+  const minimizedEnd = await main.evaluate(() =>
+    JSON.parse(localStorage.getItem("aura-usage-v1")),
+  );
+  assert.deepEqual(
+    minimizedEnd,
+    minimizedStart,
+    "Minimized app and site time must stop",
+  );
+  await ownWindowVisibility(9);
+  await waitFor(
+    () =>
+      main.evaluate(() =>
+        window.__TAURI_INTERNALS__.invoke("usage_foreground"),
+      ),
+    "restored AURA is foreground",
+  );
+  result.checks.push(
+    "Actual native minimize/restore stops foreground duration without inspecting other applications",
+  );
   await main.locator('.rail [data-view="settings"]').click();
   await main.locator("#usage-enabled").uncheck();
   const usageBefore = await main.evaluate(() =>
