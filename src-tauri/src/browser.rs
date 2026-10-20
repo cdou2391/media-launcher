@@ -27,7 +27,7 @@ impl BrowserStatus {
             return false;
         }
         self.phase = "loading".into();
-        self.message = "Loading website. Home and external fallback remain available.".into();
+        self.message = "Loading website.".into();
         self.origin = origin;
         true
     }
@@ -35,7 +35,7 @@ impl BrowserStatus {
         // WebView2 can complete a cancelled load after a warning was recorded.
         if matches!(self.phase.as_str(), "loading" | "slow") {
             self.phase = "received".into();
-            self.message = "Page received. If login, playback or the page fails, use Retry or Open externally.".into();
+            self.message = "Page received.".into();
             self.origin = origin;
         }
     }
@@ -96,7 +96,7 @@ fn update(app: &AppHandle, id: u64, phase: &str, message: &str, origin: Option<S
 // These logical insets match the browser workspace in src/style.css. Native
 // bounds reserve the rail and toolbar; remote HTML cannot draw over either.
 const RAIL_WIDTH: f64 = 90.0;
-const TOOLBAR_HEIGHT: f64 = 128.0;
+const TOOLBAR_HEIGHT: f64 = 56.0;
 
 fn service_size(width: f64, height: f64) -> LogicalSize<f64> {
     LogicalSize::new(
@@ -195,7 +195,7 @@ pub async fn open_internal(
                 title: title.clone(),
                 origin: url.origin().ascii_serialization(),
                 phase: "loading".into(),
-                message: "Opening the website. Home and external fallback remain available.".into(),
+                message: "Opening website.".into(),
             },
         });
     }
@@ -236,12 +236,12 @@ fn create_view(app: &AppHandle, id: u64, url: tauri::Url, allow_http: bool) -> R
             // No local asset, file, custom scheme or privileged origin navigation.
             let allowed = security::website_url(next.as_str(), allow_http).is_ok()
                 && !security::trusted_page("main", next);
-            if !allowed { update(&nav_app, id, "blocked", "This navigation is blocked. Use Open externally for supported sign-in flows.", None); }
+            if !allowed { update(&nav_app, id, "blocked", "This navigation is blocked. Return using the sidebar and choose External for this shortcut if sign-in requires it.", None); }
             else { navigation_started(&nav_app, id, next.origin().ascii_serialization()); }
             allowed
         })
         .on_new_window(move |_, _| {
-            update(&popup_app, id, "blocked", "This website requested a popup. Use Open externally to continue sign-in or open that experience.", None);
+            update(&popup_app, id, "blocked", "This website requested a popup. Return using the sidebar and choose External for this shortcut to continue sign-in.", None);
             NewWindowResponse::Deny
         })
         .on_download(|_, _| false)
@@ -277,7 +277,7 @@ pub fn browser_status(window: Webview, app: AppHandle) -> Result<Option<BrowserS
         {
             session.status.phase = "slow".into();
             session.status.message =
-                "The website is taking too long. Check your connection, Retry or Open externally."
+                "The website is taking too long. Check your connection and refresh, or return using the sidebar and choose External for this shortcut."
                     .into();
         }
     }
@@ -311,7 +311,7 @@ pub async fn browser_retry(window: Webview, app: AppHandle) -> Result<(), String
         &app,
         id,
         "loading",
-        "Retrying the original shortcut.",
+        "Refreshing the original shortcut.",
         Some(url.origin().ascii_serialization()),
     );
     app.get_webview("service")

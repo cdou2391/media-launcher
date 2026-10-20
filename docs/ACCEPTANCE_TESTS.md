@@ -4,6 +4,8 @@ Record PASS / FAIL / BLOCKED / NOT RUN, build commit/hash, exact hardware/archit
 
 ## P0 — Functional baseline
 
+Compact browser controls follow-up (2026-10-21): browser tests PASS the 56px header, 44px icon target, no visible URL/status paragraph or duplicate Home/External buttons, bounded refresh IPC, and sidebar return at the 620px minimum width. The native suite now checks the actual 56px reserved website bounds and sidebar Home through repeated sessions/fullscreen. New native build/device results must be recorded separately from these browser checks.
+
 | Test                               | Expected result                                       | Status                                     |
 | ---------------------------------- | ----------------------------------------------------- | ------------------------------------------ |
 | P0-01 Browser preview loads        | Home dashboard and shortcut tiles appear              | PASS — headless Chrome preview, 2026-10-20 |

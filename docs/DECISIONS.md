@@ -2,6 +2,8 @@
 
 ## ADR-008 — Retain the AURA sidebar with an isolated child webview
 
+**2026-10-21 controls follow-up:** At the user's request, the trusted header is reduced from 128px to 56px, containing only the service name and a 44px refresh icon. The persistent sidebar supplies the Home route. The URL, visible status paragraph and duplicate Home/External actions are removed from the header. Status remains in a visually hidden live region and warning tooltip; returning through the sidebar permits changing a shortcut to External. Native bounds and CSS must reserve the same 56px inset. This changes the controls within the existing child-webview architecture, not its isolation model.
+
 **Status:** Implemented; x64 native automation and both CI builds PASS (2026-10-20); physical acceptance open. Supersedes ADR-005's floating controls.
 
 The stable-window spike was built and exercised on Windows. The user's actual YouTube screenshot shows the separate owned control window obscuring a large portion of the site. The user requested AURA's existing side navigation while browsing. Separate top-level windows cannot deliver a shared native sidebar without brittle window positioning/overlays, so the stable spike has demonstrated a concrete UX deficiency.

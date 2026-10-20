@@ -1,8 +1,20 @@
 # AURA Development Progress
 
-**Last updated:** 2026-10-20. **Scope:** Phase 0 then Phase 1 only.
+**Last updated:** 2026-10-21. **Scope:** Phase 0 then Phase 1 only.
 
 Phase 0 safeguards and Phase 1 application code are implemented. Both architectures build and pass Rust tests in CI; the x64 package passes real WebView2 automation. Phase exit gates remain OPEN for physical touch/fullscreen/DPI/rotation, ARM64 runtime, provider login/playback and remaining baseline local-file/app launch checks. No Phase 2+ feature was added.
+
+## Compact browser bar - implemented, native validation pending
+
+Reduced the browsing header from 128px to 56px in both trusted CSS and native child bounds. It now shows the service name and one 44px refresh icon. Removed the URL, visible status paragraph, duplicate Home and Open externally buttons. Home/Apps/Library/Settings in the existing sidebar still close the site and restore the chosen AURA view. The icon retains Retry's original-shortcut navigation; it does not grant commands to remote sites. Launch-failure dialogs and External shortcut modes remain available.
+
+Status is retained in a visually hidden live region. Blocked/slow states highlight the icon and put the explanation in its tooltip; command failures also update accessible status. Focus moves to Refresh on entry, and it is disabled while a native action is in flight. Native messages refer to sidebar return instead of the removed controls.
+
+**Exact changed files:** index.html; src/main.js; src/style.css; src-tauri/src/browser.rs; tests/ui/controls.spec.js; tests/native-smoke.mjs; README.md; docs/ARCHITECTURE.md; docs/DECISIONS.md; docs/ACCEPTANCE_TESTS.md; docs/PROGRESS.md.
+
+**Actual checks so far:** lint/format, 22 Node/config tests, Vite production build and all 16 Chrome-preview tests PASS. Direct installed rustfmt check on browser.rs PASS; the rustup wrapper attempted a network sync in the restricted environment, so the installed formatter was used. Visually checked the browser-preview toolbar at 1400px and 620px widths: header 56px, refresh target 44 × 44, one-line title and no URL/message row. Native tests were updated for the new reserved bounds, refresh icon and sidebar Home. A new Windows CI/native test build is pending; earlier EXEs and the published preview do not yet include this change.
+
+**Next:** build both architectures and run the updated native x64 suite before handing over a new test EXE. Physical Surface/ARM64 runtime checks remain open.
 
 ## Published Windows preview release
 

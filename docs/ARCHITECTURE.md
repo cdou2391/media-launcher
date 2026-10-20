@@ -90,7 +90,7 @@ The stable-window approach is implemented as a proof of concept. [Native spike a
 
 ## ADR-008 sidebar experiment (supersedes the stable-window implementation above)
 
-The stable spike's separate controls visibly obscured the user's site. A single `service` child Webview now shares the main native Window with the trusted `main` Webview. Native bounds reserve the 90px existing rail and 128px local browser header. No floating window, iframe or remote script injection is used. The Cargo feature `embedded-browser` explicitly enables the unstable child API against pinned Tauri 2.12.4. Permission scopes use `webviews: ["main"]` with no `windows` entry, and native commands validate the actual invoking Webview's label/URL plus containing window. A remote child never gains the host window's privileges. Browser operations serialize, close only the child, and restore the selected AURA view. Physical acceptance remains open.
+The stable spike's separate controls visibly obscured the user's site. A single `service` child Webview now shares the main native Window with the trusted `main` Webview. Native bounds reserve the 90px existing rail and 56px local browser header with only the service name and refresh icon. No floating window, iframe or remote script injection is used. The Cargo feature `embedded-browser` explicitly enables the unstable child API against pinned Tauri 2.12.4. Permission scopes use `webviews: ["main"]` with no `windows` entry, and native commands validate the actual invoking Webview's label/URL plus containing window. A remote child never gains the host window's privileges. Browser operations serialize, close only the child, and restore the selected AURA view. Physical acceptance remains open.
 
 ## Local usage boundary (ADR-009)
 

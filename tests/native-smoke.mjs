@@ -208,7 +208,7 @@ try {
     );
     const toolbar = main;
     await main.locator("body.browsing").waitFor();
-    await toolbar.locator("#browser-home").waitFor();
+    await toolbar.locator('.rail-link[data-view="home"]').waitFor();
     assert.equal(
       context.pages().length,
       2,
@@ -226,6 +226,22 @@ try {
     await main.locator('[data-view="apps"]').first().click();
     const { remote, toolbar } = await open();
     if (cycle === 0) {
+      const bar = await toolbar.locator("#browser-workspace").boundingBox();
+      const refresh = await toolbar.locator("#browser-retry").boundingBox();
+      assert.equal(bar.height, 56);
+      assert.ok(refresh.width >= 44 && refresh.height >= 44);
+      assert.ok(refresh.y >= 0 && refresh.y + refresh.height <= 56);
+      assert.equal(await toolbar.locator("#browser-retry").innerText(), "");
+      assert.ok(await toolbar.locator("#browser-retry svg").isVisible());
+      assert.equal(
+        await toolbar
+          .locator("#browser-home, #browser-external, #service-origin")
+          .count(),
+        0,
+      );
+      result.checks.push(
+        "Compact 56px native browser header has only the service title and touch-sized refresh icon",
+      );
       result.ipc = await remote.evaluate(async () => {
         const invoke = window.__TAURI_INTERNALS__?.invoke;
         if (!invoke) return { bridgeAbsent: true };
@@ -303,7 +319,7 @@ try {
       await remote.screenshot({ path: path.join(testFolder, "remote.png") });
     }
     await toolbar
-      .locator("#browser-home")
+      .locator('.rail-link[data-view="home"]')
       .click({ noWaitAfter: true })
       .catch((error) => {
         if (!remote.isClosed()) throw error;
@@ -355,7 +371,7 @@ try {
     };
   }
   await https.toolbar
-    .locator("#browser-home")
+    .locator('.rail-link[data-view="home"]')
     .click({ noWaitAfter: true })
     .catch((error) => {
       if (!https.remote.isClosed()) throw error;
@@ -389,7 +405,7 @@ try {
     "Remote width must reserve the sidebar",
   );
   assert.ok(
-    Math.abs(mainSize.height - 128 - siteSize.height) <= 2,
+    Math.abs(mainSize.height - 56 - siteSize.height) <= 2,
     "Remote height must reserve the local header",
   );
   await fullscreen.remote.locator("#fullscreen").click();
@@ -402,12 +418,12 @@ try {
     height: innerHeight,
   }));
   assert.ok(fullscreenSize.width <= mainSize.width - 88);
-  assert.ok(fullscreenSize.height <= mainSize.height - 126);
+  assert.ok(fullscreenSize.height <= mainSize.height - 54);
   assert.ok(
     await main.getByRole("button", { name: "Home", exact: true }).isVisible(),
   );
   await fullscreen.remote.evaluate(() => document.exitFullscreen());
-  await main.locator("#browser-home").click();
+  await main.locator('.rail-link[data-view="home"]').click();
   await waitFor(() => fullscreen.remote.isClosed(), "fullscreen site Home");
   result.checks.push(
     "Native child bounds reserve the rail/header, including a real site fullscreen request",

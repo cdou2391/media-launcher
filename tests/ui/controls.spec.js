@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test("toolbar Home, Retry and external actions use bounded IPC (mock only)", async ({
+test("compact refresh icon and sidebar Home use bounded IPC (mock only)", async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -36,16 +36,25 @@ test("toolbar Home, Retry and external actions use bounded IPC (mock only)", asy
   );
   await expect(page.locator("#service-title")).toHaveText("Test service");
   await expect(page.locator("#browser-status")).toContainText("Popup blocked");
-  await page.getByRole("button", { name: "Retry", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Open externally ↗", exact: true })
-    .click();
-  await page.evaluate(() =>
-    window.nativeEvents["aura-browser"]({ payload: null }),
+  await expect(page.locator("#browser-retry")).toHaveAttribute(
+    "aria-describedby",
+    "browser-status",
   );
-  await page.locator("#browser-home").click();
+  await expect(page.locator("#browser-retry")).toHaveAttribute(
+    "title",
+    /Popup blocked/,
+  );
+  await expect(page.locator("#browser-workspace button")).toHaveCount(1);
+  await expect(
+    page.locator("#browser-home, #browser-external, #service-origin"),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Refresh website", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Home", exact: true }).click();
+  await expect(page.locator("#browser-workspace")).toBeHidden();
   const commands = await page.evaluate(() => window.commands);
-  for (const command of ["browser_retry", "browser_external", "browser_home"]) {
+  for (const command of ["browser_retry", "browser_home"]) {
     expect(
       commands.some(
         (call) =>
@@ -54,6 +63,9 @@ test("toolbar Home, Retry and external actions use bounded IPC (mock only)", asy
     ).toBe(true);
   }
   expect(commands.some((call) => call.command === "open_target")).toBe(false);
+  expect(commands.some((call) => call.command === "browser_external")).toBe(
+    false,
+  );
 });
 
 test("storage errors are visible and leave existing data intact", async ({
@@ -166,13 +178,22 @@ test("sidebar and browser actions remain visible with long titles in a narrow wi
     window.nativeEvents["aura-browser"]({ payload: null }),
   );
   await expect(page.locator("#service-title")).toContainText("very long");
-  for (const id of ["browser-home", "browser-retry", "browser-external"]) {
+  const toolbar = await page.locator("#browser-workspace").boundingBox();
+  expect(toolbar.height).toBe(56);
+  for (const id of ["browser-retry"]) {
     const rect = await page.locator(`#${id}`).boundingBox();
-    expect(rect.y + rect.height).toBeLessThanOrEqual(128);
+    expect(rect.y + rect.height).toBeLessThanOrEqual(56);
     expect(rect.x).toBeGreaterThanOrEqual(90);
     expect(rect.x + rect.width).toBeLessThanOrEqual(620);
     expect(rect.height).toBeGreaterThanOrEqual(44);
+    expect(rect.width).toBeGreaterThanOrEqual(44);
   }
+  await expect(page.locator("#browser-retry svg")).toBeVisible();
+  expect(
+    await page
+      .locator("#browser-status")
+      .evaluate((el) => getComputedStyle(el).clipPath),
+  ).toBe("inset(50%)");
   for (const name of ["Home", "All applications", "Library", "Settings"]) {
     await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
   }

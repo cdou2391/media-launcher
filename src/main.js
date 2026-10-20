@@ -294,6 +294,12 @@ function leaveBrowser() {
   document.body.classList.remove("browsing");
   $("#browser-workspace").classList.add("hidden");
 }
+function browserStatus(message, attention = false) {
+  $("#browser-status").textContent = message;
+  const refresh = $("#browser-retry");
+  refresh.title = attention ? `Refresh website. ${message}` : "Refresh website";
+  refresh.classList.toggle("needs-attention", attention);
+}
 async function refreshBrowser() {
   if (!native || !browsing) return;
   try {
@@ -307,12 +313,12 @@ async function refreshBrowser() {
     if (browserContext?.sessionId !== current.sessionId) usage.contextChanged();
     browserContext = current;
     $("#service-title").textContent = current.title;
-    $("#service-origin").textContent = current.origin;
-    $("#service-origin").title = current.origin;
-    $("#browser-status").textContent = current.message;
+    browserStatus(current.message, ["blocked", "slow"].includes(current.phase));
   } catch {
-    $("#browser-status").textContent =
-      "Website controls are unavailable. Try Home, or close AURA and reopen it.";
+    browserStatus(
+      "Website controls are unavailable. Use Home in the sidebar, or close AURA and reopen it.",
+      true,
+    );
   }
 }
 function enterBrowser() {
@@ -321,36 +327,33 @@ function enterBrowser() {
   document.body.classList.add("browsing");
   $("#browser-workspace").classList.remove("hidden");
   $$(".rail-link").forEach((button) => button.classList.remove("selected"));
-  $("#browser-home").focus();
+  browserStatus("Opening website.");
+  $("#browser-retry").focus();
   refreshBrowser();
 }
 async function browserAction(action, destination = "home") {
   if (!browsing || browserActionBusy) return;
   browserActionBusy = true;
   returnView = destination;
-  const externalShortcut = browserContext?.shortcutId
-    ? { id: browserContext.shortcutId, title: browserContext.title }
-    : null;
+  $("#browser-retry").disabled = true;
   try {
     await invoke(`browser_${action}`);
-    if (action === "external" && externalShortcut)
-      usage.launch(externalShortcut, "external");
     if (action !== "retry") {
       leaveBrowser();
       setView(destination);
       if (destination === "home") $("#hero-browse").focus();
     } else await refreshBrowser();
   } catch (error) {
-    $("#browser-status").textContent = `Unable to ${action}: ${String(error)}`;
+    browserStatus(
+      `Unable to ${action === "retry" ? "refresh" : "return"}: ${String(error)}`,
+      true,
+    );
   } finally {
     browserActionBusy = false;
+    $("#browser-retry").disabled = false;
   }
 }
-for (const action of ["home", "retry", "external"]) {
-  $(`#browser-${action}`).addEventListener("click", () =>
-    browserAction(action),
-  );
-}
+$("#browser-retry").addEventListener("click", () => browserAction("retry"));
 setInterval(refreshBrowser, 1000);
 $$("[data-view]").forEach((b) =>
   b.addEventListener("click", () => {
