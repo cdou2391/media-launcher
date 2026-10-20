@@ -4,6 +4,20 @@
 
 Phase 0 safeguards and Phase 1 application code are implemented. Both architectures build and pass Rust tests in CI; the x64 package passes real WebView2 automation. Phase exit gates remain OPEN for physical touch/fullscreen/DPI/rotation, ARM64 runtime, provider login/playback and remaining baseline local-file/app launch checks. No Phase 2+ feature was added.
 
+## Direct app switching and AURA loader - implementation follow-up
+
+Replaced the internal favorite close-to-Home/open sequence with a serialized native replacement. Target, title and launch policy are validated before closing the old remote child; successful replacement emits no Home event. The trusted shell and selected favorite remain visible. A dark loader uses the configured sand/blue/green accent, an A/orbit, app name and quiet light animation, with static reduced-motion styling. Routine internal-launch toasts no longer cover the loader; external routing explanations and errors remain available.
+
+New native views are created outside the client area, hidden, then assigned the normal rail/header bounds. The first native document-finished signal sets `ready` independently of blocked-navigation warnings. Trusted-main-only `browser_reveal(sessionId)` checks readiness and the exact current session before showing the remote child. Remote origins receive no capabilities or injected scripts. Readiness means document received, never successful login/playback. A 20-second slow state stops the loader animation and offers refresh/sidebar recovery. Native close failure retains the previous session; creation failure restores a usable fallback. Sidebar view requests during creation are queued and honored after the serialized operation.
+
+**Changed files:** index.html; src/main.js; src/style.css; src-tauri/build.rs; src-tauri/capabilities/default.json; src-tauri/src/browser.rs; src-tauri/src/lib.rs; tests/ui/favorites-rail.spec.js; tests/ui/switch-loading.spec.js (new); tests/native-smoke.mjs; README.md; docs/ARCHITECTURE.md; docs/DECISIONS.md; docs/ACCEPTANCE_TESTS.md; docs/PROGRESS.md.
+
+**Local checks:** lint/format, 22 Node/config tests, production Vite build and Rust formatting PASS. All 25 Chrome-preview UI tests PASS, including five new cases for no Home frame through creation/loading, delayed Home events, loader geometry/accent/reduced motion, slow/retry behavior, close/create failure recovery and sidebar navigation during creation/loading. The first run passed 23/25: the old close-failure assertion did not count the newly atomic failed launch RPC, and the new usage assertion read the wrong schema field; both test assertions were corrected. The new native suite adds delayed-document loader/no-Home assertions and a remote `browser_reveal` denial; execution against a new packaged EXE and dual-architecture CI are pending. Physical Surface and ARM64 runtime checks remain open.
+
+**Compatibility observation:** the user reports Netflix Internal showing a black video with subtitles. This is a playback failure on their setup; the cause has not been diagnosed. No DRM, codec, user-agent or security workaround is included. Netflix Auto remains External.
+
+**Next:** build both Windows architectures, run the updated native x64 suite against the exact new EXE, and publish the next unused preview release under the standing delivery instruction. Then verify switching by touch on physical Surface.
+
 ## Favorites in the sidebar - built and x64 runtime validated
 
 Added a separate Favorites group between primary navigation and Settings. Each shortcut reuses its saved color/mark with a small visible name, accessible full name and tooltip. The list scrolls independently; primary navigation and Settings stay available in short windows. Empty favorites hide the group. Phone previews use a star button opening a labeled panel above the bottom navigation, with Escape/outside-click dismissal. Search does not filter the rail; saved stars and edits update it immediately without changing the v2 schema. An unchanged list keeps its DOM/focus/scroll position.

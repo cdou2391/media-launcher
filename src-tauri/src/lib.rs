@@ -63,6 +63,7 @@ pub fn run() {
             browser::open_internal,
             browser::browser_status,
             browser::browser_home,
+            browser::browser_reveal,
             browser::browser_retry,
             browser::browser_external,
             usage::usage_foreground

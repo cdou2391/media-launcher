@@ -31,6 +31,9 @@ let browserContext = null;
 let browserActionBusy = false;
 let favoriteLaunchBusy = false;
 let browserEntry = 0;
+let browserTransition = null;
+let browserRefreshBusy = false;
+let queuedBrowserView = null;
 let returnView = "home";
 let view = "home";
 let query = "";
@@ -91,6 +94,7 @@ function closeFeedback() {
 async function launch(app, mode) {
   if (launching) return;
   const shortcut = mode ? { ...app, launchMode: mode } : app;
+  let transition = null;
   try {
     const route = launchRoute(shortcut);
     if (native && route.mode === "internal" && !homeNavigationReady)
@@ -112,6 +116,8 @@ async function launch(app, mode) {
       return;
     }
     launching = true;
+    if (native && route.mode === "internal")
+      transition = beginBrowserLoading(shortcut);
     if (native) {
       const result = await invoke("launch_shortcut", {
         target: shortcut.target,
@@ -122,16 +128,40 @@ async function launch(app, mode) {
         shortcutId: shortcut.id,
       });
       usage.launch(shortcut, result.mode);
-      toast(result.reason);
+      if (transition) {
+        transition.opening = false;
+        await refreshBrowser();
+      }
+      if (result.mode !== "internal") toast(result.reason);
     } else {
       window.open(shortcut.target, "_blank", "noopener,noreferrer");
       usage.launch(shortcut, "external");
       toast(route.reason + " Browser preview: opened a separate tab.");
     }
   } catch (error) {
-    launchFeedback(shortcut, String(error));
+    if (transition) {
+      // A failed native close leaves the old child usable. Never put a local
+      // modal underneath it or count the failed replacement as a launch.
+      const current = await invoke("browser_status").catch(() => null);
+      endBrowserLoading();
+      if (current) {
+        await refreshBrowser();
+        browserStatus(`Unable to switch: ${String(error)}`, true);
+        toast(`Unable to switch to ${shortcut.title}. ${String(error)}`);
+      } else {
+        leaveBrowser();
+        setView("home");
+        launchFeedback(shortcut, String(error));
+      }
+    } else launchFeedback(shortcut, String(error));
   } finally {
     launching = false;
+    if (queuedBrowserView !== null) {
+      const destination = queuedBrowserView;
+      queuedBrowserView = null;
+      if (browsing) await browserAction("home", destination);
+      else setView(destination);
+    }
   }
 }
 async function launchFavorite(app) {
@@ -140,7 +170,14 @@ async function launchFavorite(app) {
   favoriteLaunchBusy = true;
   favoritesRail.setBusy(true);
   try {
-    if (browsing && !(await browserAction("home"))) return;
+    // Internal replacements close/open atomically in Rust without a Home event.
+    // External shortcuts still leave browsing and return to the dashboard.
+    if (
+      browsing &&
+      launchRoute(app).mode !== "internal" &&
+      !(await browserAction("home"))
+    )
+      return;
     await launch(app);
   } finally {
     favoriteLaunchBusy = false;
@@ -306,12 +343,41 @@ function setView(next) {
   window.scrollTo({ top: 0, behavior: "instant" });
 }
 function leaveBrowser() {
+  browserEntry++;
+  endBrowserLoading();
   browserContext = null;
   favoritesRail.select(null);
   usage.contextChanged();
   browsing = false;
   document.body.classList.remove("browsing");
   $("#browser-workspace").classList.add("hidden");
+}
+function beginBrowserLoading(app) {
+  browserEntry++;
+  browserTransition = { opening: true };
+  $("#toast").classList.add("hidden");
+  browserContext = null;
+  usage.contextChanged();
+  browsing = true;
+  returnView = "home";
+  document.body.classList.add("browsing");
+  $("#browser-workspace").classList.remove("hidden");
+  $("#service-title").textContent = app.title;
+  favoritesRail.select(app.id);
+  $$(".rail-link").forEach((button) => button.classList.remove("selected"));
+  $("#browser-loading-title").textContent = `Opening ${app.title}`;
+  $("#browser-loading-detail").textContent = "Your next moment is on its way.";
+  $("#browser-loading").classList.remove("hidden", "is-stalled");
+  $("#browser-loading").setAttribute("aria-busy", "true");
+  $("#browser-retry").disabled = true;
+  browserStatus(`Opening ${app.title}.`);
+  return browserTransition;
+}
+function endBrowserLoading() {
+  browserTransition = null;
+  $("#browser-loading").classList.add("hidden");
+  $("#browser-loading").setAttribute("aria-busy", "false");
+  $("#browser-retry").disabled = browserActionBusy;
 }
 function browserStatus(message, attention = false) {
   $("#browser-status").textContent = message;
@@ -320,10 +386,15 @@ function browserStatus(message, attention = false) {
   refresh.classList.toggle("needs-attention", attention);
 }
 async function refreshBrowser() {
-  if (!native || !browsing) return;
+  if (!native || !browsing || browserRefreshBusy || browserTransition?.opening)
+    return;
+  browserRefreshBusy = true;
+  const entry = browserEntry;
+  const transition = browserTransition;
   try {
     const current = await invoke("browser_status");
-    if (!browsing) return;
+    if (!browsing || entry !== browserEntry || transition !== browserTransition)
+      return;
     if (!current) {
       leaveBrowser();
       setView("home");
@@ -334,21 +405,48 @@ async function refreshBrowser() {
     favoritesRail.select(current.shortcutId);
     $("#service-title").textContent = current.title;
     browserStatus(current.message, ["blocked", "slow"].includes(current.phase));
+    if (transition) {
+      $("#browser-loading-title").textContent = `Opening ${current.title}`;
+      $("#browser-retry").disabled = browserActionBusy;
+      const stalled = ["blocked", "slow"].includes(current.phase);
+      $("#browser-loading").classList.toggle("is-stalled", stalled);
+      $("#browser-loading").setAttribute("aria-busy", String(!stalled));
+      $("#browser-loading-detail").textContent = stalled
+        ? current.message
+        : "Your next moment is on its way.";
+      if (current.ready ?? current.phase === "received") {
+        await invoke("browser_reveal", { sessionId: current.sessionId });
+        if (entry === browserEntry && transition === browserTransition)
+          endBrowserLoading();
+      }
+    }
   } catch {
+    if (!browsing || entry !== browserEntry) return;
     browserStatus(
       "Website controls are unavailable. Use Home in the sidebar, or close AURA and reopen it.",
       true,
     );
+    if (transition === browserTransition && transition) {
+      $("#browser-loading").classList.add("is-stalled");
+      $("#browser-loading").setAttribute("aria-busy", "false");
+      $("#browser-loading-detail").textContent =
+        "We couldn't display this website. Use refresh to try again, or choose Home in the sidebar.";
+      $("#browser-retry").disabled = false;
+    }
+  } finally {
+    browserRefreshBusy = false;
   }
 }
 function enterBrowser() {
-  browserEntry++;
+  if (!browserTransition) {
+    const transition = beginBrowserLoading({ title: "your app" });
+    transition.opening = false;
+  } else browserEntry++;
   browsing = true;
   returnView = "home";
   document.body.classList.add("browsing");
   $("#browser-workspace").classList.remove("hidden");
   $$(".rail-link").forEach((button) => button.classList.remove("selected"));
-  browserStatus("Opening website.");
   $("#browser-retry").focus();
   refreshBrowser();
 }
@@ -381,6 +479,10 @@ setInterval(refreshBrowser, 1000);
 $$("[data-view]").forEach((b) =>
   b.addEventListener("click", () => {
     favoritesRail.close();
+    if (launching && browsing) {
+      queuedBrowserView = b.dataset.view;
+      return;
+    }
     if (browsing) browserAction("home", b.dataset.view);
     else setView(b.dataset.view);
   }),
@@ -629,11 +731,17 @@ storageNotice(repository.notice);
 if (native) {
   Promise.all([
     listen("aura-home", async () => {
+      if (browserTransition) return;
       const entry = browserEntry;
       // A favorite can open a new session before an old Home event arrives.
       // Never let that delayed event hide the newly opened browser workspace.
       try {
-        if ((await invoke("browser_status")) || entry !== browserEntry) return;
+        if (
+          (await invoke("browser_status")) ||
+          entry !== browserEntry ||
+          browserTransition
+        )
+          return;
       } catch {
         if (entry !== browserEntry) return;
       }

@@ -73,6 +73,8 @@ Existing key `aura-shortcuts-v1` stores manually configured shortcut records. In
 
 Dark matte surfaces, restrained sand/blue/green accent options, readable 3:2 Surface layout, minimum 44px touch targets, focus/hover/touch parity, reduced-motion mode, view transitions that are not jarring. Home remains fast offline. User always retains an explicit Exit to Windows.
 
+Internal favorite replacement preserves the trusted browser shell: native validation → serialized close of old child without Home → hidden new child → first document received → trusted session-specific reveal. A local accent-colored A/orbit loader occupies only the content area until reveal; native children cannot be covered by an HTML overlay. Sidebar view requests remain usable while loading, and requests during creation are honored after the operation settles. Slow/blocked initial loads stop the motion and expose recovery guidance. `ready` is independent of compatibility/blocked status and never means playback succeeded. The narrow `browser_reveal` capability is granted only to bundled `main`, checks exact session/readiness and serializes with close/open/refresh.
+
 ## Service compatibility
 
 Streaming compatibility requires real hardware tests of login, playback, audio, fullscreen, and popups. Embedded page load does **not** demonstrate playback compatibility. Widevine/PlayReady/other DRM behavior is dependent on runtime/provider and cannot be bypassed. Default DRM-heavy commercial providers to External until verified.

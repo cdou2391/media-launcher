@@ -9,6 +9,7 @@
     "allow-open-internal",
     "allow-browser-status",
     "allow-browser-home",
+    "allow-browser-reveal",
     "allow-browser-retry",
     "allow-browser-external",
     "core:event:allow-listen",

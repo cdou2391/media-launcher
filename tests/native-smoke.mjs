@@ -22,8 +22,10 @@ const result = {
   checks: [],
 };
 let fixtureRequests = 0;
-const fixture = http.createServer((request, response) => {
+const fixture = http.createServer(async (request, response) => {
   if (request.url === "/") fixtureRequests++;
+  if (request.url === "/second")
+    await new Promise((resolve) => setTimeout(resolve, 1600));
   response.setHeader("Content-Type", "text/html");
   response.end(
     '<!doctype html><html><title>Remote isolation fixture</title><body><h1>Remote isolation fixture</h1><button id="fullscreen" onclick="document.documentElement.requestFullscreen()">Fullscreen</button><button id="popup" onclick="window.open(\'/popup\')">Popup</button><button id="local" onclick="location.href=\'http://tauri.localhost/index.html\'">Local navigation</button></body></html>',
@@ -214,11 +216,57 @@ try {
   let favoriteRemote;
   for (const suffix of ["one", "two", "one", "two"]) {
     const old = favoriteRemote;
+    if (old)
+      await main.evaluate(() => {
+        window.homeFlashes = 0;
+        window.switchObserver?.disconnect();
+        window.switchObserver = new MutationObserver((records) => {
+          for (const record of records)
+            if (
+              record.oldValue?.includes("browsing") &&
+              !document.body.classList.contains("browsing")
+            )
+              window.homeFlashes++;
+        });
+        window.switchObserver.observe(document.body, {
+          attributes: true,
+          attributeFilter: ["class"],
+          attributeOldValue: true,
+        });
+      });
     await main
       .locator(`.rail-favorite[data-shortcut-id="favorite-${suffix}"]`)
       .click();
     if (old)
       await waitFor(() => old.isClosed(), "favorite closes previous service");
+    if (suffix === "two") {
+      await main.locator("#browser-loading:not(.hidden)").waitFor();
+      assert.match(
+        await main.locator("#browser-loading-title").textContent(),
+        /Favorite two/,
+      );
+      await main.screenshot({
+        path: path.join(testFolder, "switch-loader.png"),
+      });
+      const premature = await main.evaluate(async () => {
+        const current =
+          await window.__TAURI_INTERNALS__.invoke("browser_status");
+        try {
+          await window.__TAURI_INTERNALS__.invoke("browser_reveal", {
+            sessionId: current.sessionId,
+          });
+          return { denied: false, ready: current.ready };
+        } catch (error) {
+          return { denied: true, ready: current.ready, message: String(error) };
+        }
+      });
+      assert.equal(premature.ready, false);
+      assert.equal(
+        premature.denied,
+        true,
+        "A loading child must not reveal prematurely",
+      );
+    }
     favoriteRemote = await waitFor(
       () =>
         context
@@ -227,6 +275,13 @@ try {
       "favorite opens controlled website",
     );
     await favoriteRemote.locator("h1").waitFor();
+    await main.locator("#browser-loading.hidden").waitFor();
+    if (old)
+      assert.equal(
+        await main.evaluate(() => window.homeFlashes),
+        0,
+        "A service switch must never reveal Home",
+      );
     await waitFor(
       async () =>
         (await main
@@ -248,6 +303,22 @@ try {
   }
   const favoriteSession = await main.evaluate(() =>
     window.__TAURI_INTERNALS__.invoke("browser_status"),
+  );
+  const staleReveal = await main.evaluate(async () => {
+    const current = await window.__TAURI_INTERNALS__.invoke("browser_status");
+    try {
+      await window.__TAURI_INTERNALS__.invoke("browser_reveal", {
+        sessionId: current.sessionId + 10000,
+      });
+      return false;
+    } catch {
+      return true;
+    }
+  });
+  assert.equal(
+    staleReveal,
+    true,
+    "A stale reveal must never show another session",
   );
   await main.locator('.rail-favorite[data-shortcut-id="favorite-two"]').click();
   await pause(150);
@@ -275,6 +346,28 @@ try {
   );
   result.checks.push(
     "Sidebar favorites open and switch real native services, highlight the active shortcut, and preserve the active session when reselected",
+  );
+  result.checks.push(
+    "Internal switches retain the browser shell without Home flashes; the AURA loader remains visible until the delayed remote document is ready",
+  );
+  result.checks.push(
+    "Native reveal rejects loading and wrong-session requests from trusted UI",
+  );
+  await main.locator('.rail-favorite[data-shortcut-id="favorite-two"]').click();
+  await main.locator("#browser-loading:not(.hidden)").waitFor();
+  await main.locator('.rail-link[data-view="home"]').click();
+  await main.locator("body:not(.browsing)").waitFor();
+  await pause(1800);
+  assert.equal(await main.locator("#browser-loading:not(.hidden)").count(), 0);
+  assert.equal(
+    await main.evaluate(() =>
+      window.__TAURI_INTERNALS__.invoke("browser_status"),
+    ),
+    null,
+  );
+  assert.equal(context.pages().length, 1);
+  result.checks.push(
+    "Sidebar Home cancels a delayed native load and later callbacks cannot restore the closed service",
   );
   const open = async (target = fixtureUrl) => {
     await main.evaluate(
@@ -349,6 +442,7 @@ try {
           ],
           ["browser_status", {}],
           ["browser_home", {}],
+          ["browser_reveal", { sessionId: 1 }],
           ["browser_retry", {}],
           ["browser_external", {}],
           ["usage_foreground", {}],

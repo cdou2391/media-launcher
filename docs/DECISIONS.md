@@ -102,3 +102,13 @@ External launch requests receive a count after successful native acknowledgement
 References: [GetForegroundWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getforegroundwindow), [GetActiveWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getactivewindow).
 
 ADR-009 validation: [exact usage result](USAGE_NATIVE_RESULT.json) records native child-focus timing, pause, clear/cancel, minimized-time exclusion/restore, process restart persistence and 12 remote command denials. Both installers pass CI. Physical Surface input/DPI/rotation, sleep/lock and ARM64 runtime remain open.
+
+## ADR-010 - Direct service replacement with a trusted loading shell
+
+**Date:** 2026-10-21. **Status:** Implemented; new native build validation pending.
+
+The user observed Home flashing between sidebar favorites because switching reused the full Home command. Internal launch now validates before closing, then replaces the single remote child under the same serialized native operation without emitting Home. External routes retain their explicit departure/dashboard behavior. A failed close keeps the old session; a failed create returns usable fallback controls. Local entry generations and an active transition ignore stale status/Home callbacks; a requested local destination during creation is honored when that operation completes.
+
+Native child webviews render above local HTML, so a CSS overlay cannot safely hide their initial blank/loading frames. Use existing Tauri 2.12.4 APIs: create outside the visible client area, hide, apply normal bounds, then reveal through a narrow trusted-main-only command after its first document-finished signal. `browser_reveal` requires the exact current session and native `ready` flag, serializes with all browser mutations, and has no remote capability. This avoids a second service view, remote script injection or arbitrary URL navigation commands. A separate readiness flag preserves blocked warnings delivered before a finished/cancelled callback.
+
+The loader uses existing accent variables and an A/orbit, has no fabricated percentage or forced delay, respects reduced motion, and stops motion with recovery guidance after the existing slow/blocked state. The app name is written as text. Document readiness is not provider playback acceptance. Browser tests cover lifecycle/race/failure/accessibility behavior; the native suite must independently validate actual child visibility, no Home flash, sidebar recovery, session guards and remote command denial.

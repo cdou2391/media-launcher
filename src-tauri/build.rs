@@ -6,6 +6,7 @@ fn main() {
             "open_internal",
             "browser_status",
             "browser_home",
+            "browser_reveal",
             "browser_retry",
             "browser_external",
             "usage_foreground",

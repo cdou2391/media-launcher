@@ -168,6 +168,7 @@ test("favorites switch internal sessions safely, keep active sites, and honor ex
           return;
         }
         if (command === "launch_shortcut") {
+          if (window.failClose && site) throw Error("Close failed");
           if (args.launchMode === "external")
             return { mode: "external", reason: "External mode" };
           site = {
@@ -218,7 +219,7 @@ test("favorites switch internal sessions safely, keep active sites, and honor ex
         window.commands.filter((call) => call.command === "launch_shortcut")
           .length,
     ),
-  ).toBe(count);
+  ).toBe(count + 1);
   await page.evaluate(() => {
     window.failClose = false;
   });
@@ -244,8 +245,7 @@ test("favorites switch internal sessions safely, keep active sites, and honor ex
   );
   expect(calls.map((call) => call.command)).toEqual([
     "launch_shortcut",
-    "browser_home",
-    "browser_home",
+    "launch_shortcut",
     "launch_shortcut",
     "browser_home",
     "launch_shortcut",
