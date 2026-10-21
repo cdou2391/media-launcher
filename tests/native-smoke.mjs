@@ -378,18 +378,20 @@ try {
       );
       for (const release of heldResponses) release();
     }
-    favoriteRemote = await waitFor(
-      () =>
-        context
-          .pages()
-          .find(
-            (page) =>
-              page !== main &&
-              new URL(page.url()).pathname ===
-                (suffix === "one" ? "/" : "/second"),
-          ),
-      "favorite opens controlled website",
-    );
+    favoriteRemote =
+      retainedPages.get(suffix) ||
+      (await waitFor(
+        () =>
+          context
+            .pages()
+            .find(
+              (page) =>
+                page !== main &&
+                new URL(page.url()).pathname ===
+                  (suffix === "one" ? "/" : "/second"),
+            ),
+        "favorite opens controlled website",
+      ));
     await favoriteRemote.locator("h1").waitFor();
     await main.locator("#browser-loading").waitFor({ state: "hidden" });
     if (old)
@@ -425,6 +427,10 @@ try {
       );
       retention.sameDocumentReturns++;
       retention.inputPreserved = true;
+      if (suffix === "one") {
+        assert.equal(new URL(favoriteRemote.url()).pathname, "/watch");
+        retention.urlPreserved = true;
+      }
       assert.ok(
         Math.abs((await favoriteRemote.evaluate(() => scrollY)) - 260) <= 2,
       );
@@ -456,6 +462,10 @@ try {
           player.pause();
         });
       await favoriteRemote.evaluate(() => scrollTo(0, 260));
+      if (suffix === "one")
+        await favoriteRemote.evaluate(() =>
+          history.pushState({}, "", "/watch?retained=one"),
+        );
     }
     assert.equal(context.pages().length, retainedPages.size + 1);
     assert.equal(

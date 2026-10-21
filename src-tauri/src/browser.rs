@@ -72,8 +72,22 @@ struct Session {
     changed: Instant,
     status: BrowserStatus,
     previous_mute: bool,
+    revealed: bool,
     generation: u64,
     sleeping: bool,
+}
+
+impl Session {
+    fn parked(&mut self, native_mute: bool) {
+        // A loading/resuming view is temporarily muted by AURA. Only capture
+        // user mute intent after a successful reveal, never that temporary mute.
+        if self.revealed {
+            self.previous_mute = native_mute;
+        }
+        self.revealed = false;
+        self.generation += 1;
+        self.sleeping = false;
+    }
 }
 
 #[derive(Default)]
@@ -245,9 +259,7 @@ async fn park(app: &AppHandle) -> Result<Option<u64>, String> {
             .iter_mut()
             .find(|s| s.id == id)
             .ok_or("App has closed")?;
-        session.previous_mute = previous_mute;
-        session.generation += 1;
-        session.sleeping = false;
+        session.parked(previous_mute);
         generation = session.generation;
         sessions.active = None;
     }
@@ -273,6 +285,11 @@ async fn activate(app: &AppHandle, id: u64) -> Result<(), String> {
             .ok_or("This app has closed")?;
         session.generation += 1;
         session.sleeping = false;
+        if !session.status.ready && matches!(session.status.phase.as_str(), "loading" | "slow") {
+            session.status.phase = "loading".into();
+            session.status.message = "Returning to website.".into();
+            session.changed = Instant::now();
+        }
         sessions.active = Some(id);
     }
     resize_service(app)?;
@@ -352,6 +369,7 @@ pub async fn open_internal(
             allow_http,
             changed: Instant::now(),
             previous_mute: false,
+            revealed: false,
             generation: 0,
             sleeping: false,
             status: BrowserStatus {
@@ -576,6 +594,16 @@ pub async fn browser_reveal(
         let _ = service.hide();
         return Err(error);
     }
+    if let Some(session) = state
+        .sessions
+        .lock()
+        .map_err(|_| "Browser state is unavailable")?
+        .items
+        .iter_mut()
+        .find(|s| s.id == session_id)
+    {
+        session.revealed = true;
+    }
     Ok(())
 }
 
@@ -635,6 +663,7 @@ mod tests {
             allow_http: false,
             changed: Instant::now(),
             previous_mute: false,
+            revealed: false,
             generation: 1,
             sleeping: false,
             status: BrowserStatus {
@@ -647,6 +676,20 @@ mod tests {
                 ready: true,
             },
         }
+    }
+
+    #[test]
+    fn parking_before_reveal_preserves_mute_intent_instead_of_temporary_loader_mute() {
+        let mut app = session(1);
+        app.parked(true);
+        assert!(!app.previous_mute);
+        app.parked(true);
+        assert!(!app.previous_mute);
+        app.revealed = true;
+        app.parked(true);
+        assert!(app.previous_mute);
+        app.parked(true);
+        assert!(app.previous_mute);
     }
 
     #[test]
