@@ -1,5 +1,37 @@
 import { test, expect } from "@playwright/test";
 
+test("unknown sites preserve a readable monogram, including failed custom images", async ({
+  page,
+}) => {
+  await page.addInitScript(() =>
+    localStorage.setItem(
+      "aura-shortcuts-v2",
+      JSON.stringify({
+        version: 2,
+        shortcuts: [
+          {
+            id: "pale",
+            title: "YouTube lookalike",
+            target: "https://youtube.com.example.com",
+            favorite: true,
+            color: "#ffffff",
+            mark: "YT",
+            icon: "data:image/png;base64,aGVsbG8=",
+          },
+        ],
+      }),
+    ),
+  );
+  await page.goto("/");
+  for (const selector of ["#favorites .app-icon", ".rail-favorite .app-icon"]) {
+    const icon = page.locator(selector).first();
+    await expect(icon).toHaveText("YT");
+    await expect(icon).toHaveClass(/monogram/);
+    await expect(icon).toHaveCSS("color", "rgb(16, 26, 40)");
+    await expect(icon.locator("img")).toHaveCount(0);
+  }
+});
+
 test("card controls stay inside cards, do not launch, and restore keyboard focus", async ({
   page,
 }) => {

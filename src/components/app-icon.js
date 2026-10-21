@@ -16,6 +16,14 @@ export function appIcon(app, className = "") {
     mark.replaceChildren();
     mark.textContent = app.mark || app.title?.[0]?.toUpperCase() || "A";
     mark.classList.add("monogram");
+    const rgb = (app.color || "#32485b")
+      .slice(1)
+      .match(/../g)
+      .map((part) => parseInt(part, 16));
+    mark.style.color =
+      rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114 > 150
+        ? "#101a28"
+        : "#f4f5f6";
   };
   const brand = providerIcon(app);
   if (brand) mark.dataset.provider = brand;
