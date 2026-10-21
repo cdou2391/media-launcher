@@ -174,6 +174,7 @@ test("sidebar and browser actions remain visible with long titles in a narrow wi
   });
   await page.setViewportSize({ width: 620, height: 470 });
   await page.goto("/");
+  const railBeforeBrowsing = await page.locator(".rail").boundingBox();
   await page.evaluate(() =>
     window.nativeEvents["aura-browser"]({ payload: null }),
   );
@@ -199,6 +200,7 @@ test("sidebar and browser actions remain visible with long titles in a narrow wi
   }
   const rail = await page.locator(".rail").boundingBox();
   expect(rail.width).toBe(90);
+  expect(rail).toEqual(railBeforeBrowsing);
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(page.locator("#settings-view")).toBeVisible();
   await expect(page.locator("#browser-workspace")).toBeHidden();

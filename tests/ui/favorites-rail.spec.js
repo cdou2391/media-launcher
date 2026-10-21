@@ -14,6 +14,76 @@ const fixtureApps = (count) =>
     allowHttp: false,
   }));
 
+for (const viewport of [
+  { width: 1400, height: 700 },
+  { width: 620, height: 470 },
+  { width: 360, height: 800 },
+]) {
+  test(`navigation stays pinned while pages and favorites scroll at ${viewport.width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await page.addInitScript(
+      (apps) =>
+        localStorage.setItem(
+          "aura-shortcuts-v2",
+          JSON.stringify({ version: 2, shortcuts: apps }),
+        ),
+      fixtureApps(24),
+    );
+    await page.goto("/");
+    for (const name of ["Home", "All applications", "Settings"]) {
+      await page.getByRole("button", { name, exact: true }).click();
+      const rail = await page.locator(".rail").boundingBox();
+      const home = await page
+        .getByRole("button", { name: "Home", exact: true })
+        .boundingBox();
+      const settings = await page
+        .getByRole("button", { name: "Settings", exact: true })
+        .boundingBox();
+      await page.mouse.move(viewport.width - 40, viewport.height / 2);
+      await page.mouse.wheel(0, 1000);
+      await expect
+        .poll(() => page.evaluate(() => scrollY))
+        .toBeGreaterThan(100);
+      await expect
+        .poll(async () => (await page.locator(".rail").boundingBox()).y)
+        .toBe(rail.y);
+      expect(
+        await page
+          .getByRole("button", { name: "Home", exact: true })
+          .boundingBox(),
+      ).toEqual(home);
+      expect(
+        await page
+          .getByRole("button", { name: "Settings", exact: true })
+          .boundingBox(),
+      ).toEqual(settings);
+      const main = await page.locator(".main").boundingBox();
+      expect(main.x).toBe(viewport.width > 580 ? 90 : 0);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+    }
+    if (viewport.width <= 580)
+      await page
+        .getByRole("button", { name: "Favorite applications", exact: true })
+        .click();
+    const before = await page.locator(".rail").boundingBox();
+    const pageScroll = await page.evaluate(() => scrollY);
+    await page.locator("#rail-favorite-list").evaluate((el) => {
+      el.scrollTop = el.scrollHeight;
+    });
+    expect(
+      await page.locator("#rail-favorite-list").evaluate((el) => el.scrollTop),
+    ).toBeGreaterThan(0);
+    expect(await page.locator(".rail").boundingBox()).toEqual(before);
+    expect(await page.evaluate(() => scrollY)).toBe(pageScroll);
+  });
+}
+
 test("sidebar favorites stay in sync with edits and persist independently of search", async ({
   page,
 }) => {

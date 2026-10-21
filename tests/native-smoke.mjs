@@ -164,6 +164,53 @@ try {
   );
   await main.locator("#favorites .tile").first().waitFor();
   result.checks.push("Packaged application renders Home in real WebView2");
+  const navigationBeforeScroll = await main.evaluate(() => {
+    const filler = document.createElement("div");
+    filler.id = "native-scroll-fixture";
+    filler.style.height = `${innerHeight * 2}px`;
+    document.querySelector(".main").append(filler);
+    return [
+      ".rail",
+      '.rail-link[data-view="home"]',
+      '.rail-link[data-view="settings"]',
+    ].map((selector) =>
+      document.querySelector(selector).getBoundingClientRect().toJSON(),
+    );
+  });
+  const viewportSize = await main.evaluate(() => ({
+    width: innerWidth,
+    height: innerHeight,
+  }));
+  await main.mouse.move(viewportSize.width - 40, viewportSize.height / 2);
+  await main.mouse.wheel(0, 700);
+  await waitFor(
+    () => main.evaluate(() => scrollY > 100),
+    "native document scrolls independently of navigation",
+  );
+  const navigationAfterScroll = await main.evaluate(() =>
+    [
+      ".rail",
+      '.rail-link[data-view="home"]',
+      '.rail-link[data-view="settings"]',
+    ].map((selector) =>
+      document.querySelector(selector).getBoundingClientRect().toJSON(),
+    ),
+  );
+  assert.deepEqual(navigationAfterScroll, navigationBeforeScroll);
+  assert.equal(
+    await main
+      .locator(".main")
+      .evaluate((el) => el.getBoundingClientRect().left),
+    90,
+  );
+  await main.screenshot({ path: path.join(testFolder, "pinned-sidebar.png") });
+  await main.evaluate(() => {
+    document.querySelector("#native-scroll-fixture").remove();
+    scrollTo(0, 0);
+  });
+  result.checks.push(
+    "Native document scrolling keeps the sidebar, Home and Settings at unchanged viewport bounds, with content beside the 90px rail",
+  );
   await main.evaluate(() => {
     localStorage.removeItem("aura-shortcuts-v2");
     localStorage.setItem(

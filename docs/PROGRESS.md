@@ -4,6 +4,16 @@
 
 Phase 0 safeguards and Phase 1 application code are implemented. Both architectures build and pass Rust tests in CI; the x64 package passes real WebView2 automation. Phase exit gates remain OPEN for physical touch/fullscreen/DPI/rotation, ARM64 runtime, provider login/playback and remaining baseline local-file/app launch checks. No Phase 2+ feature was added.
 
+## Pinned sidebar - implementation follow-up
+
+The user reported navigation moving with the page. A real wheel-scroll regression reproduced the old rail moving from y=0 to y=-1000: `position: sticky` was constrained by an overflow ancestor. The rail now uses fixed viewport positioning with a matching main-content offset. Desktop/compact layouts consistently reserve 90px, matching native browser bounds and preventing the previous 68px-to-90px width jump when entering a website. The phone preview retains its fixed bottom bar and zero left content offset. Favorites continue scrolling independently, with Home and Settings anchored.
+
+**Changed files:** src/style.css; tests/ui/favorites-rail.spec.js; tests/ui/controls.spec.js; tests/native-smoke.mjs; README.md; docs/PROGRESS.md; docs/ACCEPTANCE_TESTS.md.
+
+**Preview validation:** all 28 Chrome-preview tests PASS. Three new cases exercise actual document scrolling on Home, Applications and Settings at 1400 × 700, 620 × 470 and 360 × 800, asserting unchanged sidebar/Home/Settings bounds, independent favorites scrolling and no horizontal overflow. The compact browser test also checks identical rail bounds before/after entering a website. The native suite adds a deterministic scroll fixture to validate viewport anchoring in real WebView2. New Windows builds/native execution are pending; previous release evidence does not validate the new CSS. No native API, routing, storage or remote permission changes are needed.
+
+Local lint/format, 22 Node/config tests, production Vite build and the added compact-browser geometry assertion PASS. **Next:** build both Windows architectures, validate the exact x64 EXE and publish the next unused preview release. Physical touch/DPI/rotation and ARM64 runtime remain open.
+
 ## Direct app switching and AURA loader - built and x64 runtime validated
 
 Replaced the internal favorite close-to-Home/open sequence with a serialized native replacement. Target, title and launch policy are validated before closing the old remote child; successful replacement emits no Home event. The trusted shell and selected favorite remain visible. A dark loader uses the configured sand/blue/green accent, an A/orbit, app name and quiet light animation, with static reduced-motion styling. Routine internal-launch toasts no longer cover the loader; external routing explanations and errors remain available.

@@ -79,7 +79,8 @@ p {
   display: flex;
   flex-direction: column;
   align-items: center;
-  position: sticky;
+  position: fixed;
+  left: 0;
   top: 0;
   height: 100vh;
   height: 100dvh;
@@ -240,6 +241,7 @@ p {
 .main {
   flex: 1;
   min-width: 0;
+  margin-left: 90px;
 }
 .topbar {
   height: 128px;
@@ -876,10 +878,6 @@ p {
   }
 }
 @media (max-width: 850px) {
-  .rail {
-    width: 68px;
-    flex-basis: 68px;
-  }
   .hero-mark {
     display: block;
     left: 26px;
@@ -967,6 +965,7 @@ p {
     height: 43px;
   }
   .main {
+    margin-left: 0;
     padding-bottom: 65px;
   }
   .topbar {
