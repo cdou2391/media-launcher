@@ -222,6 +222,125 @@ p {
 .rail-favorites-toggle {
   display: none;
 }
+.open-apps-link {
+  position: relative;
+  margin-top: 8px;
+  min-width: 44px;
+  min-height: 44px;
+}
+.open-apps-link svg {
+  width: 25px;
+  height: 25px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+}
+.open-app-count {
+  position: absolute;
+  top: -2px;
+  right: -3px;
+  min-width: 17px;
+  height: 17px;
+  border-radius: 9px;
+  padding: 0 4px;
+  background: var(--accent);
+  color: #101a28;
+  font-size: 10px;
+  line-height: 17px;
+  font-weight: 700;
+}
+.rail-favorite.is-open:not([aria-current="true"])::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px #0c1420;
+}
+.open-app-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 24px;
+}
+.open-app-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: linear-gradient(115deg, #172334, #101a28);
+}
+.open-app-mark {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  flex-shrink: 0;
+  border-radius: 15px;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 650;
+}
+.open-app-info {
+  flex: 1;
+  min-width: 0;
+}
+.open-app-info h3 {
+  overflow-wrap: anywhere;
+}
+.open-app-info p,
+.open-app-footnote {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.open-app-info p {
+  margin-top: 5px;
+}
+.open-app-footnote {
+  margin: 20px 0;
+}
+.open-app-actions {
+  display: flex;
+  gap: 10px;
+}
+.open-app-actions button {
+  min-height: 44px;
+  min-width: 60px;
+}
+.open-app-actions .quiet {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 16px;
+  background: transparent;
+  color: #c1cbd6;
+}
+.open-app-actions .quiet:hover {
+  background: #233145;
+  color: #fff;
+}
+@media (max-width: 850px) {
+  .open-app-card {
+    flex-wrap: wrap;
+    gap: 14px;
+    padding: 18px;
+  }
+  .open-app-actions {
+    width: 100%;
+  }
+  .open-app-actions .primary {
+    flex: 1;
+  }
+}
+@media (max-width: 580px) {
+  .open-apps-link {
+    margin: 0;
+  }
+}
 @media (max-height: 650px) {
   .rail {
     padding: 10px 0;
@@ -1428,4 +1547,219 @@ body.browsing {
     min-width: 44px;
     min-height: 44px;
   }
+}
+/* Shared library cards: independent touch targets within one surface. */
+.app-card {
+  position: relative;
+  min-width: 0;
+  border: 1px solid #ffffff12;
+  border-radius: 18px;
+  background:
+    radial-gradient(
+      ellipse at 0 0,
+      color-mix(in srgb, var(--tile-color) 36%, transparent),
+      transparent 80%
+    ),
+    #141e2b;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.app-card:hover,
+.app-card:focus-within {
+  border-color: #ffffff38;
+  box-shadow: 0 10px 30px #0003;
+}
+.app-card:has(.card-menu[open]) {
+  z-index: 5;
+}
+.app-card .tile {
+  min-height: 234px;
+  height: 100%;
+  padding: 58px 18px 18px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  gap: 14px;
+  justify-content: flex-start;
+  overflow: visible;
+}
+.app-card .tile:hover,
+.app-card .tile:focus-visible {
+  transform: none;
+  box-shadow: none;
+}
+.app-card .tile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.app-card .tile:after {
+  content: none;
+}
+.app-card .tile-foot {
+  display: block;
+}
+.app-card .tile-name {
+  font-size: 15px;
+}
+.app-card .tile-type {
+  color: #a8b4c3;
+  opacity: 1;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+.app-card .tile-mode {
+  margin-top: auto;
+  border: 1px solid #ffffff1a;
+  border-radius: 6px;
+  padding: 4px 7px;
+  color: #c4cdd8;
+  font-size: 10px;
+}
+.app-card .tile-controls {
+  position: absolute;
+  right: 7px;
+  top: 7px;
+  gap: 2px;
+}
+.app-card .tile-star,
+.card-menu summary {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  cursor: pointer;
+  background: transparent;
+  color: #d6c398;
+}
+.app-card .tile-star.off {
+  color: #9aa8b9;
+}
+.app-card .tile-star:hover,
+.card-menu summary:hover {
+  background: #ffffff0d;
+}
+.card-menu summary {
+  list-style: none;
+  color: #b7c3d1;
+  font-size: 14px;
+  letter-spacing: 2px;
+}
+.card-menu summary::-webkit-details-marker {
+  display: none;
+}
+.card-menu-panel {
+  position: absolute;
+  right: 0;
+  top: 49px;
+  width: min(192px, calc(100vw - 40px));
+  padding: 6px;
+  background: #202d3e;
+  border: 1px solid #526174;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px #0008;
+}
+.card-menu-panel button {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  text-align: left;
+  background: transparent;
+  color: #e8edf4;
+  border-radius: 7px;
+  padding: 10px;
+  font-size: 13px;
+}
+.card-menu-panel button:hover {
+  background: #ffffff12;
+}
+.app-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border: 1px solid #ffffff12;
+  border-radius: 15px;
+  background: #0c131d;
+  color: #f1f3f7;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+  font-weight: 650;
+}
+.app-icon img {
+  width: 64%;
+  height: 64%;
+  object-fit: contain;
+}
+.app-icon.monogram {
+  background: var(--icon-tint);
+  font-size: 19px;
+}
+.app-icon.rail-favorite-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  font-size: 15px;
+}
+.open-app-card {
+  border-radius: 18px;
+  border-color: #ffffff16;
+  background: linear-gradient(115deg, #1b2839, #131e2c);
+}
+.open-app-card[data-state="active"] {
+  border-color: #bda77a80;
+}
+.open-app-info p {
+  display: inline-block;
+  padding: 5px 8px;
+  border-radius: 7px;
+  background: #ffffff08;
+  font-size: 12px;
+}
+.open-app-card[data-state="active"] .open-app-info p {
+  color: var(--accent);
+}
+.open-app-mark.app-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+}
+.icon-settings {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0 14px;
+  font-size: 12px;
+  color: #aebacc;
+}
+.icon-settings button {
+  min-height: 44px;
+}
+@media (max-width: 580px) {
+  .app-card .tile {
+    padding: 56px 13px 15px;
+    min-height: 226px;
+  }
+  .app-card .tile-name {
+    font-size: 14px;
+  }
+  .icon-settings {
+    flex-wrap: wrap;
+  }
+}
+.app-card .tile-controls {
+  left: 7px;
+  justify-content: flex-end;
+}
+.card-menu-panel {
+  left: 0;
+  right: 0;
+  width: auto;
+}
+.app-icon[data-provider="primevideo"] img {
+  width: 88%;
+  height: 88%;
 }

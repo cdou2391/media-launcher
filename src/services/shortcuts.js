@@ -1,4 +1,5 @@
 import { targetKind } from "./targets.js";
+import { savedIcon } from "./app-icons.js";
 
 export const STORAGE_KEY = "aura-shortcuts-v2";
 export const LEGACY_KEY = "aura-shortcuts-v1";
@@ -34,6 +35,7 @@ export function normalizeShortcut(value) {
       ? value.launchMode
       : "auto",
     allowHttp: value.allowHttp === true,
+    ...(savedIcon(value.icon) ? { icon: savedIcon(value.icon) } : {}),
   };
 }
 

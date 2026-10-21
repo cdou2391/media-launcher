@@ -10,6 +10,10 @@ test("only the trusted webview has capabilities even when a site shares its nati
   assert.equal(main.windows, undefined);
   assert.equal(main.remote, undefined);
   assert.ok(!main.permissions.includes("core:default"));
+  assert.ok(main.permissions.includes("allow-app-fullscreen"));
+  for (const command of ["sessions", "resume", "close"])
+    assert.ok(main.permissions.includes(`allow-browser-${command}`));
+  assert.ok(!main.permissions.includes("core:window:allow-set-fullscreen"));
   assert.ok(
     !main.permissions.some((permission) =>
       /allow-create|shell:|fs:/.test(permission),

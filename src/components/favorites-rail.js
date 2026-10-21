@@ -1,3 +1,4 @@
+import { appIcon } from "./app-icon.js";
 export function setupFavoritesRail({ onLaunch }) {
   const rail = document.querySelector(".rail");
   const group = document.querySelector("#rail-favorites");
@@ -7,6 +8,16 @@ export function setupFavoritesRail({ onLaunch }) {
   let selectedId = null;
   let busy = false;
   let rendered = null;
+  let openIds = new Set();
+
+  function setOpenIds(ids) {
+    openIds = new Set(ids.filter(Boolean));
+    for (const button of list.children) {
+      const open = openIds.has(button.dataset.shortcutId);
+      button.classList.toggle("is-open", open);
+      button.title = `${button.querySelector(".rail-favorite-name").textContent}${open ? " · Kept open" : ""}`;
+    }
+  }
 
   function close({ restoreFocus = false } = {}) {
     rail.classList.remove("favorites-open");
@@ -46,20 +57,7 @@ export function setupFavoritesRail({ onLaunch }) {
       button.setAttribute("aria-label", `Open favorite ${app.title}`);
       button.title = app.title;
       button.disabled = busy;
-      const mark = document.createElement("span");
-      mark.className = "rail-favorite-mark";
-      mark.setAttribute("aria-hidden", "true");
-      mark.textContent = app.mark || app.title[0]?.toUpperCase() || "•";
-      mark.classList.toggle("wordmark", mark.textContent.length > 1);
-      mark.style.backgroundColor = app.color;
-      const rgb = app.color
-        .slice(1)
-        .match(/../g)
-        .map((value) => parseInt(value, 16));
-      mark.style.color =
-        rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114 > 150
-          ? "#101a28"
-          : "#f4f5f6";
+      const mark = appIcon(app, "rail-favorite-mark");
       const label = document.createElement("span");
       label.className = "rail-favorite-name";
       label.textContent = app.title;
@@ -74,6 +72,7 @@ export function setupFavoritesRail({ onLaunch }) {
     toggle.classList.toggle("hidden", !favorites.length);
     if (!favorites.length) close();
     select(selectedId);
+    setOpenIds([...openIds]);
     if (focusedId) {
       const next =
         [...list.children].find(
@@ -102,6 +101,7 @@ export function setupFavoritesRail({ onLaunch }) {
     render,
     select,
     setBusy,
+    setOpenIds,
     close,
     isOpen: () => mobile.matches && rail.classList.contains("favorites-open"),
   };

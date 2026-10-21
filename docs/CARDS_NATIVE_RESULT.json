@@ -1,0 +1,245 @@
+{
+  "host": "Windows_NT 10.0.26200 x64",
+  "checks": [
+    "Packaged application renders Home in real WebView2",
+    "Bundled logos decode; in-card options preserve focus without launching; raster icon upload/reset updates cards and sidebar in real WebView2",
+    "Native document scrolling keeps the sidebar, Home and Settings at unchanged viewport bounds, with content beside the 90px rail",
+    "Native WebView2 v1 migration preserves favorite, color, mark and accent across renderer reload",
+    "Favorite switching and Open apps return preserve native document/session, notes and manually paused media position without reload or additional launch counts",
+    "Six-app capacity rejects a seventh without eviction or changing the active page; explicit Open apps Close releases the native child",
+    "Internal switches retain the browser shell without Home flashes; the AURA loader remains visible until the delayed remote document is ready",
+    "Native reveal rejects loading and wrong-session requests from trusted UI",
+    "Sidebar Home parks a delayed native load; its late completion cannot reveal it over Home",
+    "Compact 56px native browser header has only the service title and touch-sized refresh icon",
+    "Remote IPC inaccessible/denied; popup and privileged-origin navigation blocked",
+    "Retry invokes native original-target navigation",
+    "Ten real native child open/Home/close cycles restore Home and keyboard focus",
+    "Ordinary HTTPS Example Domain document loads inside AURA",
+    "All four persistent sidebar destinations park the site and navigate to the chosen AURA view",
+    "Native child bounds reserve the rail/header, including a real site fullscreen request",
+    "Four fullscreen and two windowed HTML fullscreen cycles preserve AURA host mode and viewport; trusted toggle still works",
+    "Native Exit launcher closes application",
+    "Sidebar favorite shortcuts and labels survive a full native process restart",
+    "Usage totals and paused preference survive a complete native process restart",
+    "Exit releases retained pages; a new process starts with an empty Open apps list",
+    "Favorites, shortcut display values and accent survive a full native process restart"
+  ],
+  "webview2": "155.0.4283.62",
+  "retention": {
+    "sameDocumentReturns": 2,
+    "inputPreserved": true,
+    "pausedMediaPreserved": true,
+    "noReturnReload": true,
+    "capacity": 6,
+    "noSilentEviction": true,
+    "mediaBeforePark": {
+      "paused": true,
+      "position": 1.25,
+      "duration": 4
+    },
+    "urlPreserved": true,
+    "scrollPreserved": true,
+    "backgroundStates": [
+      {
+        "sessionId": 1,
+        "sleeping": true,
+        "active": false
+      },
+      {
+        "sessionId": 2,
+        "sleeping": true,
+        "active": false
+      }
+    ]
+  },
+  "ipc": {
+    "bridgeAbsent": false,
+    "denied": [
+      {
+        "command": "open_target",
+        "denied": true,
+        "message": "Command open_target not allowed by ACL"
+      },
+      {
+        "command": "launch_shortcut",
+        "denied": true,
+        "message": "Command launch_shortcut not allowed by ACL"
+      },
+      {
+        "command": "open_internal",
+        "denied": true,
+        "message": "Command open_internal not allowed by ACL"
+      },
+      {
+        "command": "browser_status",
+        "denied": true,
+        "message": "Command browser_status not allowed by ACL"
+      },
+      {
+        "command": "browser_sessions",
+        "denied": true,
+        "message": "Command browser_sessions not allowed by ACL"
+      },
+      {
+        "command": "browser_resume",
+        "denied": true,
+        "message": "Command browser_resume not allowed by ACL"
+      },
+      {
+        "command": "browser_close",
+        "denied": true,
+        "message": "Command browser_close not allowed by ACL"
+      },
+      {
+        "command": "browser_home",
+        "denied": true,
+        "message": "Command browser_home not allowed by ACL"
+      },
+      {
+        "command": "browser_reveal",
+        "denied": true,
+        "message": "Command browser_reveal not allowed by ACL"
+      },
+      {
+        "command": "browser_retry",
+        "denied": true,
+        "message": "Command browser_retry not allowed by ACL"
+      },
+      {
+        "command": "browser_external",
+        "denied": true,
+        "message": "Command browser_external not allowed by ACL"
+      },
+      {
+        "command": "usage_foreground",
+        "denied": true,
+        "message": "Command usage_foreground not allowed by ACL"
+      },
+      {
+        "command": "app_fullscreen",
+        "denied": true,
+        "message": "Command app_fullscreen not allowed by ACL"
+      },
+      {
+        "command": "plugin:window|close",
+        "denied": true,
+        "message": "Command plugin:window|close not allowed by ACL"
+      },
+      {
+        "command": "plugin:window|set_fullscreen",
+        "denied": true,
+        "message": "Command plugin:window|set_fullscreen not allowed by ACL"
+      },
+      {
+        "command": "plugin:webview|close",
+        "denied": true,
+        "message": "Command plugin:webview|close not allowed by ACL"
+      },
+      {
+        "command": "plugin:event|emit",
+        "denied": true,
+        "message": "Command plugin:event|emit not allowed by ACL"
+      }
+    ]
+  },
+  "https": {
+    "status": "PASS",
+    "url": "https://example.com/",
+    "title": "Example Domain",
+    "httpStatus": 200
+  },
+  "fullscreen": {
+    "fullscreenCycles": 4,
+    "windowedCycles": 2
+  },
+  "windowRestore": {
+    "status": "NOT_RUN",
+    "reason": "Excluded from this scope: earlier Preview 4/5 low-level restore probes produced tiny viewports. This build's manual taskbar/minimize/restore remains unverified."
+  },
+  "usageTiming": {
+    "status": "NOT_RUN",
+    "reason": "Excluded from this scope: earlier full-suite timing was affected by desktop focus. This run verifies stored usage/pause persistence, not duration accuracy or minimize exclusion."
+  },
+  "usage": {
+    "version": 1,
+    "enabled": false,
+    "auraMs": 5188,
+    "shortcuts": [
+      {
+        "id": "favorite-one",
+        "title": "Favorite one",
+        "internalMs": 0,
+        "internalLaunches": 1,
+        "externalLaunches": 0,
+        "lastOpenedAt": 1792626016405
+      },
+      {
+        "id": "favorite-two",
+        "title": "Favorite two",
+        "internalMs": 1001,
+        "internalLaunches": 2,
+        "externalLaunches": 0,
+        "lastOpenedAt": 1792626024734
+      }
+    ]
+  },
+  "status": "PASS_SCOPED",
+  "date": "2026-10-22",
+  "sourceCommit": "957678f1aecaafde4484c28708e48b1928e58a2a",
+  "ciRun": "https://github.com/cdou2391/media-launcher/actions/runs/39694300296",
+  "cardScope": "Bundled provider logos decoded in packaged WebView2; options/Escape focus and upload/reset update cards and sidebar without launching. Browser tests separately verify custom-icon restart and narrow layouts.",
+  "nativeScope": "Retained sessions and original document/input/URL/scroll/manually paused local media position, no reload/extra count on return, six-app capacity without eviction, explicit Close/process cleanup, sidebar/loading/navigation/security/fullscreen, stored usage/pause and restart persistence. Native foreground-duration/minimize-exclusion accuracy and low-level restore are excluded.",
+  "ci": {
+    "status": "success",
+    "nodeTests": 25,
+    "browserTests": 38,
+    "rustTestsPerArchitecture": 10,
+    "architectures": ["x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc"],
+    "artifacts": [
+      {
+        "id": 12390965178,
+        "name": "aura-home-media-arm64",
+        "digest": "sha256:1d8b6acb29a247b4887fdb0be2dea53dcf6e7c969d2861e2e53d0b00bed23de8",
+        "downloadDigestVerified": true
+      },
+      {
+        "id": 12389859200,
+        "name": "aura-home-media-x64",
+        "digest": "sha256:cebace2fe8a63cb13a64d32f690be36898a59217ed954882d0ad1f0dd96fac1b",
+        "downloadDigestVerified": true
+      }
+    ],
+    "checkout": {
+      "commit": "d70dd447d8aa0abbf55ec3f9dc259ffc00d679db",
+      "sourceTree": "7b8700565a9b642153df8e2f90ca44c88a7f38a2",
+      "sourceTreeMatches": true
+    }
+  },
+  "testedExecutableSha256": "890E8434807C8E4F285A8A9EDDE65B4CFD7A9233642E585C6E5B55C897549F7C",
+  "deliveredBinaries": [
+    {
+      "file": "AURA.exe",
+      "sha256": "890E8434807C8E4F285A8A9EDDE65B4CFD7A9233642E585C6E5B55C897549F7C"
+    },
+    {
+      "file": "AURA-x64-setup.exe",
+      "sha256": "42995437DE7C4849022BF91F8C70578676CC2B4FB9E6F47C62CEBB9DD638F01F"
+    },
+    {
+      "file": "AURA-arm64-setup.exe",
+      "sha256": "CD214A3277CA271B1AF543B5D63F3CB0B181A45D7F5F4B586A520262EFBF19F3"
+    }
+  ],
+  "mediaScope": "Parking uses native SetIsMuted and IsMuted read-back, hides the view, then requests best-effort TrySuspend. Returning restores pre-parking mute intent after reveal. The fixture is manually paused before switching; it does not establish provider auto-pause, background playback position or CPU/memory savings. No remote scripts are injected.",
+  "unverified": [
+    "Physical Surface touch/DPI/rotation and multiple monitors",
+    "Provider login/playback and automatic media pause; muted playback can still advance",
+    "Playing-media background behavior in real services",
+    "ARM64 runtime",
+    "Installer install/uninstall",
+    "Manual Windows taskbar/minimize/restore",
+    "Native foreground-duration accuracy/minimized-time exclusion in this scoped run",
+    "Retained page survival under renderer/OS memory pressure; runtime session state ends on Exit",
+    "Absence of visual flicker on physical hardware"
+  ]
+}

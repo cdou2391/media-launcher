@@ -10,6 +10,10 @@ test("dashboard, search, favorites, edit mode and settings survive refresh", asy
   await page
     .getByRole("button", { name: "All applications", exact: true })
     .click();
+  await page
+    .locator("#all-apps")
+    .getByLabel("Options for YouTube", { exact: true })
+    .click();
   await page.getByRole("button", { name: "Edit YouTube", exact: true }).click();
   await page.getByLabel("Open this shortcut").selectOption("external");
   await page

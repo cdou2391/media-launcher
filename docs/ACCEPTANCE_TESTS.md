@@ -24,6 +24,8 @@ Compact browser controls follow-up (2026-10-21): browser tests PASS the 56px hea
 
 ## P1 — Unified in-app browsing
 
+Retained sessions (ADR-012), 2026-10-22: browser-preview tests PASS Open apps listing/count/favorite indicators, Return by session ID without relaunch/count, explicit Close/failure recovery/focus and 620px/360px touch-control/no-overflow behavior. [Exact x64 evidence](OPEN_APPS_NATIVE_RESULT.json) PASS for retained document/session, URL/notes/scroll and paused local media position, no reload/extra count on return, six-app capacity without eviction, native mute read-back and successful fixture suspension callbacks, inactive/stale reveal denial, explicit Close and process cleanup. Both architecture CI builds PASS ten Rust tests and packaging. The first native media check did not await its initial seek; the corrected range/seek fixture passes against the exact unchanged EXE. Provider playback, automatic pause, playing-media background behavior, physical Surface touch/DPI/rotation/multi-monitor and ARM64 runtime remain NOT_RUN. A successful sleep request is not universal media pause or measured CPU/memory savings; UI discloses that muting alone can leave playback advancing. Earlier one-child close-on-switch expectations are superseded for normal Home/switching; explicit Close releases each child. Native duration/minimize/restore cases remain excluded from this scoped run.
+
 | Test                      | Expected result                                               | Status  |
 | ------------------------- | ------------------------------------------------------------- | ------- |
 | P1-01 Internal HTTPS      | AURA-owned service window opens, without Edge process UI      | NOT RUN |
@@ -67,6 +69,8 @@ Compact browser controls follow-up (2026-10-21): browser tests PASS the 56px hea
 | Older supported Surface Win 10   | Win 10 | best-effort       | NOT RUN                  | NOT RUN             |
 
 ## Compatibility observations template
+
+Fullscreen regression (ADR-011): [exact Preview 6 x64 evidence](FULLSCREEN_NATIVE_RESULT.json) PASS for four website HTML fullscreen enter/exit cycles from fullscreen AURA and two from windowed AURA with unchanged host mode/viewport; Settings still toggles the host. Remote `app_fullscreen` and generic window commands are denied (14 calls in total). The new host-state assertion fails against Preview 5; earlier bounds-only checks missed the exit bug. Repeat video exit via touch and Escape on physical Surface, then verify sidebar/Home, switching while a fullscreen element is active and multi-monitor/DPI. These physical/provider cases remain NOT_RUN; scoped native results exclude foreground duration and low-level minimize/restore.
 
 ```text
 Service:
@@ -128,3 +132,7 @@ The earlier native evidence covers the separate stable-window spike. The child-w
 ## Local usage addition (ADR-009)
 
 [Exact delivery evidence](USAGE_NATIVE_RESULT.json): 22 Node/config tests and 16 browser-preview tests PASS; both native architectures pass six Rust tests and package release installers. Real x64 WebView2 PASS: internal shortcut launch count and time while its remote document has focus; usage pause and clear/cancel; own-window minimize/restore with stable minimized totals; persisted totals/paused preference after full process restart; original settings retained; 12 remote IPC denials including usage_foreground. External launch counts and Unavailable duration labeling, failed-launch exclusion, corrupted-storage preservation and checkpoint behavior are also covered in Node/browser tests. Physical touch/DPI/rotation, sleep/lock, ARM64 runtime and external-duration measurement are not established by this evidence.
+
+## App card redesign — 2026-10-22
+
+Local checks PASS lint/format, 25 Node/config tests and production Vite build. All 38 Chrome browser tests PASS: in-card action/launch separation, native disclosure keyboard/Escape/outside dismissal/focus restoration, favorite persistence, offline bundled logos, custom PNG rasterization/persistence/reset and SVG rejection, responsive 44px controls/panel bounds at 1400/620/360px. Existing navigation, retained-session, security-CSP, usage and loader tests remain passing. Preview screenshots inspected. [Windows CI](https://github.com/cdou2391/media-launcher/actions/runs/39694300296) PASS both architectures with 25 Node/config tests, 38 browser tests, ten Rust tests and installer builds each. [Exact packaged x64 checks](CARDS_NATIVE_RESULT.json) PASS 22 scoped native statements, including new logo decoding and card-menu/upload/reset isolation. Preview 8 is published with verified asset hashes, source tag and public download. Physical Surface touch, ARM64 runtime, installers and provider playback remain NOT_RUN; native foreground-duration/minimize/restore remain excluded.

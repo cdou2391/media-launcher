@@ -6,6 +6,8 @@ AURA is a **Windows-native host application** for a touch-optimized media experi
 
 ## User journeys
 
+Current retained-session contract (ADR-012): the native main window owns up to six untrusted `service-<id>` child webviews, with only one active. Switching/Home parks a view instead of destroying it; Open apps Return or an identical shortcut reuses its document, and explicit Close releases it. Retained state ends with the process. Each child keeps existing URL/popup/download guards and receives zero native capabilities; capabilities remain exact `main` only. Only the active child is resized/revealed in the reserved 90px/56px browser area. Parking uses native mute/hide and best-effort WebView2 TrySuspend, with generation guards on asynchronous results. Returning resumes hidden and restores the previous native mute state on trusted reveal. No remote scripts or stored browsing snapshots are introduced. Six-app capacity rejects a seventh without silently discarding data. Existing single-session descriptions below are historical where superseded by this paragraph and ADR-012.
+
 ### Internal-compatible website
 
 ```mermaid
@@ -96,8 +98,14 @@ The stable spike's separate controls visibly obscured the user's site. A single 
 
 ## Local usage boundary (ADR-009)
 
+Fullscreen ownership (ADR-011): native `WindowMode` records the host mode independently from a remote document's fullscreen element. Only trusted `app_fullscreen` changes it. The Windows service view subscribes to WebView2's native fullscreen event and queues reconciliation after Tauri's automatic host change, preserving the latest mode across enter/exit and child close. Registration completes before the child is exposed. Generic window fullscreen-set permission is removed. HTML fullscreen retains the reserved 90px/56px trusted navigation insets; no site script or remote privilege is introduced.
+
 The trusted Settings UI keeps versioned aggregate usage under aura-usage-v1, separate from shortcuts. Only IDs/titles, durations, launch counts and last-launch timestamps are retained. The trusted-main-only usage_foreground command returns whether AURA's own HWND equals the Windows foreground window and is not minimized; remote webviews receive no new capability. Browser status exposes only its session generation and optional shortcut identity to trusted callers for attribution. One-second samples credit matching foreground intervals; sleep gaps and clock discontinuities are dropped. Explicit native acknowledgement precedes launch counting. External app/tab durations are unavailable. Local storage errors preserve session totals, corrupt/future data pauses tracking without overwrite, and user-confirmed clear affects only usage.
 
 ## Favorite shortcut rail
 
 The trusted local favorites-rail component projects existing v2 favorite records into the sidebar, reusing safe text marks and colors without network icon requests or a new schema. Primary navigation and Settings remain fixed while favorites scroll. Phone previews present the same favorites in a panel above the bottom bar; native browsing retains the 90px sidebar and 56px header bounds. Selection uses the current native shortcut ID. Switching closes the old service through browser_home before launch_shortcut; a failed close prevents a replacement launch. Reselecting the current shortcut preserves its session. Home events query native state and compare a local browser-entry generation so a delayed close event cannot hide a new service. All operations stay in the trusted main webview with existing native validation/capabilities.
+
+## Shared app cards (ADR-013)
+
+Home and Applications share an article containing independent launch, favorite and options targets. Sidebar favorites and Open apps use the same local icon renderer. Provider assets resolve from validated host boundaries; custom raster icons are optional bounded PNG data in v2 shortcuts. No remote favicon lookup or native permissions are added. See APP_ICON_ASSETS.md for sources, upload limits and fallback behavior.

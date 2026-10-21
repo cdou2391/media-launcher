@@ -5,11 +5,15 @@ fn main() {
             "launch_shortcut",
             "open_internal",
             "browser_status",
+            "browser_sessions",
+            "browser_resume",
+            "browser_close",
             "browser_home",
             "browser_reveal",
             "browser_retry",
             "browser_external",
             "usage_foreground",
+            "app_fullscreen",
         ]),
     ))
     .expect("Failed to build AURA permissions");

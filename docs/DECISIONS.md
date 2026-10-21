@@ -103,6 +103,28 @@ References: [GetForegroundWindow](https://learn.microsoft.com/en-us/windows/win3
 
 ADR-009 validation: [exact usage result](USAGE_NATIVE_RESULT.json) records native child-focus timing, pause, clear/cancel, minimized-time exclusion/restore, process restart persistence and 12 remote command denials. Both installers pass CI. Physical Surface input/DPI/rotation, sleep/lock and ARM64 runtime remain open.
 
+## ADR-012 - Retain bounded internal-app sessions with explicit close
+
+**Date:** 2026-10-22. **Status:** Implemented; independent x64/ARM64 builds and exact x64 scoped runtime validation PASS. This is the user's requested Phase 1 navigation change. [Evidence and remaining physical/provider limits](OPEN_APPS_NATIVE_RESULT.json).
+
+Keep a maximum of six child webviews in memory, with monotonically unique native labels and a single active session. Reuse only an exact shortcut ID/original URL/HTTP-consent tuple. Switching and Home hide/mute the old page; explicit Open apps Close releases it. Do not evict a page to make room, persist DOM/history snapshots or imply state survives app Exit/restart. A new Open apps sidebar destination exposes non-favorite retained sessions too, with count, Return/Close and visible lifecycle/media limitations. Favorite indicators reuse saved symbols/colors. Returning to an existing session does not increment launch counts; foreground usage follows only the active context.
+
+Use native WebView2 mute, TrySuspend and Resume via the already pinned COM interfaces, adding a direct reference to the existing windows-core 0.62.2 dependency. Mute/hide must succeed before switching; TrySuspend is optional/best effort and its callback never blocks navigation. Keep failed suspension honestly labeled Kept open rather than Paused. The app cannot promise provider video/audio pause through these APIs; the user can pause the site's player first and then return to its retained state. Restore the previous native mute value at reveal, not while a target is still hidden. Stale suspension completions check generation and active ID. Read-only metadata contains IDs/titles/status, no target URL. Three new commands are granted to exact bundled main only; remote webviews retain zero capabilities and receive no scripts.
+
+Capacity/URL validation precedes parking. A failed park keeps the current page; failed creation/activation attempts to restore it; failed close keeps its record. Missing child records can be closed, and Home recovers from a missing active child. Ready/reveal checks require the currently active session so a retained background document cannot show over a new app. Resize and fullscreen isolation apply independently to each active view. Tests must prove real page identity/input/paused-media retention, no reload or extra launch count on return, no silent eviction, explicit cleanup, stale callbacks/reveal, remote denial and process cleanup. UI mocks alone do not establish retention or actual media suspension.
+
+References: [WebView2 TrySuspend/Resume](https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2_3#trysuspend), [native mute](https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2_8#put_ismuted).
+
+## ADR-011 - Separate website fullscreen from AURA host mode
+
+**Date:** 2026-10-21. **Status:** Implemented; both architecture builds and exact x64 scoped native validation PASS. Physical Surface/YouTube acceptance remains open; see [evidence](FULLSCREEN_NATIVE_RESULT.json).
+
+Tauri 2.12.4 `tauri-runtime-wry` registers a Windows WebView2 fullscreen-element callback that queues the containing window's fullscreen state directly. This loses AURA's existing fullscreen when a video exits. Keep the host's mode as native application state, initialized from configuration and changed only by the authorized local Settings command. Subscribe through pinned Tauri `with_webview` and the already-locked `webview2-com` 0.39.1 interface. Reconcile to the current trusted mode after each runtime fullscreen message; dispatch via a worker because main-thread dispatch executes immediately ahead of the runtime's queued message. Do not change the child bounds or inject site JS. Site fullscreen fills its reserved browser area and keeps navigation reachable. A windowed AURA also retains its mode.
+
+Handler registration is awaited before exposing the child; failures use launch recovery. The handler lives with CoreWebView2, captures no COM object or child handle, and reads current host intent rather than a stale session snapshot. Remote commands remain denied; replace the generic fullscreen-set capability with narrow `app_fullscreen` plus existing native caller authorization. Test native host state and dimensions after exit, repeated cycles and trusted Settings toggles; bounds during fullscreen alone are insufficient. Any runtime dependency upgrade must recheck handler order and native regression. No general Windows restore fix or provider playback claim follows from this change.
+
+Reference: [Microsoft WebView2 fullscreen-element event](https://learn.microsoft.com/en-us/dotnet/api/microsoft.web.webview2.core.corewebview2.containsfullscreenelementchanged).
+
 ## ADR-010 - Direct service replacement with a trusted loading shell
 
 **Date:** 2026-10-21. **Status:** Implemented; both CI builds and exact x64 native validation PASS. Physical acceptance remains open.
@@ -114,3 +136,9 @@ Native child webviews render above local HTML, so a CSS overlay cannot safely hi
 The loader uses existing accent variables and an A/orbit, has no fabricated percentage or forced delay, respects reduced motion, and stops motion with recovery guidance after the existing slow/blocked state. The app name is written as text. Document readiness is not provider playback acceptance. Browser tests cover lifecycle/race/failure/accessibility behavior; the native suite must independently validate actual child visibility, no Home flash, sidebar recovery, session guards and remote command denial.
 
 [Native evidence](SWITCHING_NATIVE_RESULT.json) records nineteen passing statements for the exact CI-built x64 EXE, including deliberately held document completion, no Home flash, pending-load Home cancellation, premature/stale reveal rejection and thirteen remote IPC denials. Both architecture builds pass 22 Node/config, 25 preview and six Rust tests. Physical touch/DPI/rotation, ARM64 runtime and protected playback are not established by these results.
+
+## ADR-013 — Shared local icons and in-card shortcut controls (2026-10-22)
+
+Use one DOM icon component across Home, Applications, sidebar favorites and Open apps. Bundle static SVG brand assets; use URL host boundaries for automatic matching and retain monograms for other targets. Optional custom icons are decoded/rasterized to bounded 96px PNG data in the existing v2 shortcut record. No remote favicon requests, native file privileges, new dependencies or remote capabilities are needed. Source attribution and limits are in APP_ICON_ASSETS.md.
+
+Keep launch and management controls as sibling elements inside an article, never nested buttons. Use native details/summary for a keyboard-operable options disclosure, with Escape/outside dismissal and focus restoration. Star and options remain visible for touch. Open apps retains its explicit Return/Close and native state semantics. Existing v1/v2 favorites, marks, colors and launch modes remain intact.

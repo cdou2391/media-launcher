@@ -1,5 +1,28 @@
 import { test, expect } from "@playwright/test";
 
+test("fullscreen settings uses the trusted host-mode command (mock only)", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.isTauri = true;
+    window.fullscreenCalls = [];
+    window.__TAURI_INTERNALS__ = {
+      metadata: { currentWindow: { label: "main" } },
+      transformCallback: () => 1,
+      invoke: async (command, args) => {
+        if (command === "plugin:window|is_fullscreen") return true;
+        if (command === "app_fullscreen") window.fullscreenCalls.push(args);
+      },
+    };
+  });
+  await page.goto("/");
+  await page.locator('.rail-link[data-view="settings"]').click();
+  await page.locator("#toggle-fullscreen").click();
+  await expect
+    .poll(() => page.evaluate(() => window.fullscreenCalls))
+    .toEqual([{ value: false }]);
+});
+
 test("compact refresh icon and sidebar Home use bounded IPC (mock only)", async ({
   page,
 }) => {
