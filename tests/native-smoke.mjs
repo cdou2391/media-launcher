@@ -42,7 +42,23 @@ const fixture = http.createServer(async (request, response) => {
     wav.writeUInt32LE(samples * 2, 40);
     // Silent local media fixture: test position/paused state without playing sound.
     response.setHeader("Content-Type", "audio/wav");
-    response.end(wav);
+    response.setHeader("Accept-Ranges", "bytes");
+    const range = request.headers.range?.match(/^bytes=(\d+)-(\d*)$/);
+    if (range) {
+      const start = Number(range[1]);
+      const end = Math.min(
+        range[2] ? Number(range[2]) : wav.length - 1,
+        wav.length - 1,
+      );
+      response.writeHead(206, {
+        "Content-Range": `bytes ${start}-${end}/${wav.length}`,
+        "Content-Length": end - start + 1,
+      });
+      response.end(wav.subarray(start, end + 1));
+    } else {
+      response.setHeader("Content-Length", wav.length);
+      response.end(wav);
+    }
     return;
   }
   if (request.url === "/") fixtureRequests++;
@@ -443,7 +459,10 @@ try {
             position: player.currentTime,
           }));
         assert.equal(media.paused, true);
-        assert.ok(Math.abs(media.position - 1.25) < 0.1);
+        assert.ok(
+          Math.abs(media.position - 1.25) < 0.1,
+          `Returned media state: ${JSON.stringify(media)}; before park: ${JSON.stringify(retention.mediaBeforePark)}`,
+        );
         retention.pausedMediaPreserved = true;
       }
     } else {
@@ -458,9 +477,41 @@ try {
                 once: true,
               }),
             );
-          player.currentTime = 1.25;
           player.pause();
+          await new Promise((resolve, reject) => {
+            const timer = setTimeout(
+              () =>
+                reject(
+                  Error(
+                    `Initial seek did not settle: ${player.currentTime}, state ${player.readyState}, duration ${player.duration}`,
+                  ),
+                ),
+              5000,
+            );
+            player.addEventListener(
+              "seeked",
+              () => {
+                clearTimeout(timer);
+                resolve();
+              },
+              { once: true },
+            );
+            player.currentTime = 1.25;
+          });
         });
+      if (suffix === "one") {
+        retention.mediaBeforePark = await favoriteRemote
+          .locator("#player")
+          .evaluate((player) => ({
+            paused: player.paused,
+            position: player.currentTime,
+            duration: player.duration,
+          }));
+        assert.ok(
+          Math.abs(retention.mediaBeforePark.position - 1.25) < 0.1,
+          "Fixture must settle its initial seek before switching",
+        );
+      }
       await favoriteRemote.evaluate(() => scrollTo(0, 260));
       if (suffix === "one")
         await favoriteRemote.evaluate(() =>

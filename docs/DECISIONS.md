@@ -105,7 +105,7 @@ ADR-009 validation: [exact usage result](USAGE_NATIVE_RESULT.json) records nativ
 
 ## ADR-012 - Retain bounded internal-app sessions with explicit close
 
-**Date:** 2026-10-22. **Status:** Implemented; independent Windows build/runtime verification pending. This is the user's requested Phase 1 navigation change.
+**Date:** 2026-10-22. **Status:** Implemented; independent x64/ARM64 builds and exact x64 scoped runtime validation PASS. This is the user's requested Phase 1 navigation change. [Evidence and remaining physical/provider limits](OPEN_APPS_NATIVE_RESULT.json).
 
 Keep a maximum of six child webviews in memory, with monotonically unique native labels and a single active session. Reuse only an exact shortcut ID/original URL/HTTP-consent tuple. Switching and Home hide/mute the old page; explicit Open apps Close releases it. Do not evict a page to make room, persist DOM/history snapshots or imply state survives app Exit/restart. A new Open apps sidebar destination exposes non-favorite retained sessions too, with count, Return/Close and visible lifecycle/media limitations. Favorite indicators reuse saved symbols/colors. Returning to an existing session does not increment launch counts; foreground usage follows only the active context.
 
