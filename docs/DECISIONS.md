@@ -103,6 +103,18 @@ References: [GetForegroundWindow](https://learn.microsoft.com/en-us/windows/win3
 
 ADR-009 validation: [exact usage result](USAGE_NATIVE_RESULT.json) records native child-focus timing, pause, clear/cancel, minimized-time exclusion/restore, process restart persistence and 12 remote command denials. Both installers pass CI. Physical Surface input/DPI/rotation, sleep/lock and ARM64 runtime remain open.
 
+## ADR-012 - Retain bounded internal-app sessions with explicit close
+
+**Date:** 2026-10-22. **Status:** Implemented; independent Windows build/runtime verification pending. This is the user's requested Phase 1 navigation change.
+
+Keep a maximum of six child webviews in memory, with monotonically unique native labels and a single active session. Reuse only an exact shortcut ID/original URL/HTTP-consent tuple. Switching and Home hide/mute the old page; explicit Open apps Close releases it. Do not evict a page to make room, persist DOM/history snapshots or imply state survives app Exit/restart. A new Open apps sidebar destination exposes non-favorite retained sessions too, with count, Return/Close and visible lifecycle/media limitations. Favorite indicators reuse saved symbols/colors. Returning to an existing session does not increment launch counts; foreground usage follows only the active context.
+
+Use native WebView2 mute, TrySuspend and Resume via the already pinned COM interfaces, adding a direct reference to the existing windows-core 0.62.2 dependency. Mute/hide must succeed before switching; TrySuspend is optional/best effort and its callback never blocks navigation. Keep failed suspension honestly labeled Kept open rather than Paused. The app cannot promise provider video/audio pause through these APIs; the user can pause the site's player first and then return to its retained state. Restore the previous native mute value at reveal, not while a target is still hidden. Stale suspension completions check generation and active ID. Read-only metadata contains IDs/titles/status, no target URL. Three new commands are granted to exact bundled main only; remote webviews retain zero capabilities and receive no scripts.
+
+Capacity/URL validation precedes parking. A failed park keeps the current page; failed creation/activation attempts to restore it; failed close keeps its record. Missing child records can be closed, and Home recovers from a missing active child. Ready/reveal checks require the currently active session so a retained background document cannot show over a new app. Resize and fullscreen isolation apply independently to each active view. Tests must prove real page identity/input/paused-media retention, no reload or extra launch count on return, no silent eviction, explicit cleanup, stale callbacks/reveal, remote denial and process cleanup. UI mocks alone do not establish retention or actual media suspension.
+
+References: [WebView2 TrySuspend/Resume](https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2_3#trysuspend), [native mute](https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2_8#put_ismuted).
+
 ## ADR-011 - Separate website fullscreen from AURA host mode
 
 **Date:** 2026-10-21. **Status:** Implemented; both architecture builds and exact x64 scoped native validation PASS. Physical Surface/YouTube acceptance remains open; see [evidence](FULLSCREEN_NATIVE_RESULT.json).

@@ -222,6 +222,125 @@ p {
 .rail-favorites-toggle {
   display: none;
 }
+.open-apps-link {
+  position: relative;
+  margin-top: 8px;
+  min-width: 44px;
+  min-height: 44px;
+}
+.open-apps-link svg {
+  width: 25px;
+  height: 25px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+}
+.open-app-count {
+  position: absolute;
+  top: -2px;
+  right: -3px;
+  min-width: 17px;
+  height: 17px;
+  border-radius: 9px;
+  padding: 0 4px;
+  background: var(--accent);
+  color: #101a28;
+  font-size: 10px;
+  line-height: 17px;
+  font-weight: 700;
+}
+.rail-favorite.is-open:not([aria-current="true"])::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px #0c1420;
+}
+.open-app-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 24px;
+}
+.open-app-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: linear-gradient(115deg, #172334, #101a28);
+}
+.open-app-mark {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  flex-shrink: 0;
+  border-radius: 15px;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 650;
+}
+.open-app-info {
+  flex: 1;
+  min-width: 0;
+}
+.open-app-info h3 {
+  overflow-wrap: anywhere;
+}
+.open-app-info p,
+.open-app-footnote {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.open-app-info p {
+  margin-top: 5px;
+}
+.open-app-footnote {
+  margin: 20px 0;
+}
+.open-app-actions {
+  display: flex;
+  gap: 10px;
+}
+.open-app-actions button {
+  min-height: 44px;
+  min-width: 60px;
+}
+.open-app-actions .quiet {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 16px;
+  background: transparent;
+  color: #c1cbd6;
+}
+.open-app-actions .quiet:hover {
+  background: #233145;
+  color: #fff;
+}
+@media (max-width: 850px) {
+  .open-app-card {
+    flex-wrap: wrap;
+    gap: 14px;
+    padding: 18px;
+  }
+  .open-app-actions {
+    width: 100%;
+  }
+  .open-app-actions .primary {
+    flex: 1;
+  }
+}
+@media (max-width: 580px) {
+  .open-apps-link {
+    margin: 0;
+  }
+}
 @media (max-height: 650px) {
   .rail {
     padding: 10px 0;

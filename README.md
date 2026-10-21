@@ -2,7 +2,9 @@
 
 A touch-first Windows media launcher built with Tauri 2, Rust, Vite and vanilla JavaScript. The cinematic dashboard, favorites, search, accent colors, keyboard navigation, fullscreen toggle and explicit Exit to Windows remain available.
 
-## Current development status — 2026-10-21
+## Current development status — 2026-10-22
+
+Open-app retention is implemented, with Windows verification pending. Switching between internal sites or using Home keeps the previous page. The sidebar's Open apps button shows retained pages with Return and Close actions, and favorite marks show a small kept-open indicator. Up to six apps are retained without silent eviction; closing releases a page. Page state lasts for this AURA process, not across Exit/restart. Background views are muted and WebView2 suspension is best effort: pause a site's media player before switching to preserve playback position. Browser UI checks pass; Preview 6 below predates this addition.
 
 Fullscreen follow-up: website HTML fullscreen now reconciles to AURA's separately tracked host-window mode. Leaving a video preserves fullscreen AURA; a windowed AURA stays windowed. Settings uses a trusted `app_fullscreen` command, with the generic fullscreen setter removed from capabilities. Both architecture builds pass; the exact x64 EXE passes four fullscreen and two windowed cycles with unchanged host mode/dimensions and working Settings toggle. [Exact scoped evidence](docs/FULLSCREEN_NATIVE_RESULT.json); physical YouTube/touch/Escape and multi-monitor checks remain open.
 

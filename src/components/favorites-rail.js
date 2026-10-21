@@ -7,6 +7,16 @@ export function setupFavoritesRail({ onLaunch }) {
   let selectedId = null;
   let busy = false;
   let rendered = null;
+  let openIds = new Set();
+
+  function setOpenIds(ids) {
+    openIds = new Set(ids.filter(Boolean));
+    for (const button of list.children) {
+      const open = openIds.has(button.dataset.shortcutId);
+      button.classList.toggle("is-open", open);
+      button.title = `${button.querySelector(".rail-favorite-name").textContent}${open ? " · Kept open" : ""}`;
+    }
+  }
 
   function close({ restoreFocus = false } = {}) {
     rail.classList.remove("favorites-open");
@@ -74,6 +84,7 @@ export function setupFavoritesRail({ onLaunch }) {
     toggle.classList.toggle("hidden", !favorites.length);
     if (!favorites.length) close();
     select(selectedId);
+    setOpenIds([...openIds]);
     if (focusedId) {
       const next =
         [...list.children].find(
@@ -102,6 +113,7 @@ export function setupFavoritesRail({ onLaunch }) {
     render,
     select,
     setBusy,
+    setOpenIds,
     close,
     isOpen: () => mobile.matches && rail.classList.contains("favorites-open"),
   };

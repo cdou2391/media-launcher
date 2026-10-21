@@ -1,8 +1,20 @@
 # AURA Development Progress
 
-**Last updated:** 2026-10-21. **Scope:** Phase 0 then Phase 1 only.
+**Last updated:** 2026-10-22. **Scope:** Phase 0 then Phase 1 only.
 
 Phase 0 safeguards and Phase 1 application code are implemented. Both architectures build and pass Rust tests in CI; the x64 package passes real WebView2 automation. Phase exit gates remain OPEN for physical touch/fullscreen/DPI/rotation, ARM64 runtime, provider login/playback and remaining baseline local-file/app launch checks. No Phase 2+ feature was added.
+
+## Keep apps open while switching — implementation; Windows verification pending
+
+The user reported losing each previous site. Replaced destructive switching with a bounded native collection of six retained child views and one active session. Matching shortcut ID, approved original URL and HTTP consent reuses the existing document; edited targets receive separate sessions. Home/local navigation parks the active view. A new trusted Open apps view lists retained pages with Return and Close, while the pinned sidebar shows a count and favorite dots. Close explicitly discards a page; no automatic eviction occurs at capacity. The compact website header is unchanged. State is process-local and clears on Exit; no browsing URLs/history/credentials or DOM snapshots are stored.
+
+Parking first mutes via native WebView2 and hides the child, then requests best-effort TrySuspend. A successful callback may show Sleeping; otherwise it remains Kept open, with muted audio. Returning calls Resume and restores the previous native mute state only after trusted reveal. This does not guarantee automatic media pause; the UI tells the user to pause the site's player before switching. No scripts or privileged bridge are injected into remote sites. Suspension callbacks check session/generation/active state, so late results cannot label a resumed/reparked/closed app as sleeping. Commands serialize and capacity is checked before changing the active app. New-view failure attempts to restore the prior view, failed close retains its record, and Home can recover from a missing child. Existing fullscreen reconciliation remains in place for every child.
+
+**Changed files:** index.html; src/main.js; src/style.css; src/components/favorites-rail.js; src/components/open-apps.js (new); src-tauri/Cargo.toml; src-tauri/Cargo.lock; src-tauri/build.rs; src-tauri/capabilities/default.json; src-tauri/src/lib.rs; src-tauri/src/browser.rs; src-tauri/src/browser_media.rs (new); tests/security-config.test.js; tests/ui/open-apps.spec.js (new); tests/native-smoke.mjs; README.md; docs/PROGRESS.md; docs/ARCHITECTURE.md; docs/DECISIONS.md; docs/ACCEPTANCE_TESTS.md.
+
+**Local checks:** lint/format, 22 Node/config tests, production Vite and Rust formatting/locked offline metadata PASS. All 32 Chrome-preview tests PASS; the three new Open apps cases separately pass again after final CSS/return-title/accessibility refinements. Preview screenshots inspected at 620px and 360px; Close now uses a matching dark outlined style. New Rust tests cover identity/consent matching, capacity/no eviction and late suspension callbacks; execution awaits CI because local MSVC link.exe is unavailable. The native harness now checks same document/session and unsaved notes, a manually paused local media position, no return reload or added launch counts, six-app capacity, explicit close, hidden loading/Home, all prior security/navigation/fullscreen checks and empty sessions after process restart. Native results are not yet claimed.
+
+**Next:** run independent x64/ARM64 CI builds and the exact new x64 package, then publish the next preview under the standing instruction. Provider media pause/playing-background behavior, physical touch/DPI/rotation/multiple monitors, ARM64 runtime, installer install/uninstall and manual Windows restore remain unverified. Earlier scoped duration/restore exclusions still apply; no Phase 2 discovery/integration is included.
 
 ## Website fullscreen preserves AURA mode — built and scoped native validation PASS
 

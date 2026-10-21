@@ -6,6 +6,8 @@ AURA is a **Windows-native host application** for a touch-optimized media experi
 
 ## User journeys
 
+Current retained-session contract (ADR-012): the native main window owns up to six untrusted `service-<id>` child webviews, with only one active. Switching/Home parks a view instead of destroying it; Open apps Return or an identical shortcut reuses its document, and explicit Close releases it. Retained state ends with the process. Each child keeps existing URL/popup/download guards and receives zero native capabilities; capabilities remain exact `main` only. Only the active child is resized/revealed in the reserved 90px/56px browser area. Parking uses native mute/hide and best-effort WebView2 TrySuspend, with generation guards on asynchronous results. Returning resumes hidden and restores the previous native mute state on trusted reveal. No remote scripts or stored browsing snapshots are introduced. Six-app capacity rejects a seventh without silently discarding data. Existing single-session descriptions below are historical where superseded by this paragraph and ADR-012.
+
 ### Internal-compatible website
 
 ```mermaid

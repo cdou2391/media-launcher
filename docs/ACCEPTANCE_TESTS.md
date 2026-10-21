@@ -24,6 +24,8 @@ Compact browser controls follow-up (2026-10-21): browser tests PASS the 56px hea
 
 ## P1 — Unified in-app browsing
 
+Retained sessions (ADR-012), 2026-10-22: browser-preview tests PASS Open apps listing/count/favorite indicators, Return by session ID without relaunch/count, explicit Close/failure recovery/focus and 620px/360px touch-control/no-overflow behavior. Native verification is pending for preserved document ID/URL/unsaved input/scroll/manually paused media position, background native mute/suspension, ready/reveal isolation, capacity without eviction, explicit close and process cleanup. Keep provider playback, automatic pause, physical Surface touch/DPI/rotation/multi-monitor and ARM64 runtime NOT_RUN until evidence exists. A successful sleep request is not universal media pause; UI must disclose that muting alone can leave playback advancing. Earlier one-child close-on-switch expectations are superseded for normal Home/switching; explicit Close must still release each child.
+
 | Test                      | Expected result                                               | Status  |
 | ------------------------- | ------------------------------------------------------------- | ------- |
 | P1-01 Internal HTTPS      | AURA-owned service window opens, without Edge process UI      | NOT RUN |

@@ -1,4 +1,5 @@
 mod browser;
+mod browser_media;
 mod launch;
 mod policy;
 mod security;
@@ -6,6 +7,13 @@ mod usage;
 mod window_mode;
 
 use tauri::{webview::NewWindowResponse, Manager, Webview, WebviewWindowBuilder};
+
+#[derive(serde::Serialize)]
+struct LaunchResult {
+    mode: &'static str,
+    reason: &'static str,
+    resumed: bool,
+}
 
 #[tauri::command]
 fn open_target(window: Webview, target: String, allow_http: bool) -> Result<(), String> {
@@ -23,15 +31,20 @@ async fn launch_shortcut(
     launch_mode: String,
     allow_http: bool,
     shortcut_id: Option<String>,
-) -> Result<policy::Route, String> {
+) -> Result<LaunchResult, String> {
     security::authorize(&window, true)?;
     let route = policy::route(&target, &kind, &launch_mode, allow_http)?;
-    if route.mode == "internal" {
-        browser::open_internal(window, app, target, title, allow_http, shortcut_id).await?;
+    let resumed = if route.mode == "internal" {
+        browser::open_internal(window, app, target, title, allow_http, shortcut_id).await?
     } else {
         launch::open_external(&target, allow_http)?;
-    }
-    Ok(route)
+        false
+    };
+    Ok(LaunchResult {
+        mode: route.mode,
+        reason: route.reason,
+        resumed,
+    })
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -66,6 +79,9 @@ pub fn run() {
             launch_shortcut,
             browser::open_internal,
             browser::browser_status,
+            browser::browser_sessions,
+            browser::browser_resume,
+            browser::browser_close,
             browser::browser_home,
             browser::browser_reveal,
             browser::browser_retry,

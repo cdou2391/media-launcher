@@ -11,6 +11,7 @@ import {
 import { launchRoute, routeLabel } from "./services/launch-router.js";
 import { setupUsage } from "./components/usage-panel.js";
 import { setupFavoritesRail } from "./components/favorites-rail.js";
+import { setupOpenApps } from "./components/open-apps.js";
 
 const ACCENT_KEY = "aura-accent-v1";
 let storage;
@@ -48,6 +49,15 @@ const usage = setupUsage({
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 const favoritesRail = setupFavoritesRail({ onLaunch: launchFavorite });
+const openApps = setupOpenApps({
+  native,
+  invoke,
+  getShortcuts: () => apps,
+  onResume: resumeSession,
+  onNotice: toast,
+  onChange: (items) =>
+    favoritesRail.setOpenIds(items.map((app) => app.shortcutId)),
+});
 const accent = readPreference(storage, ACCENT_KEY, "sand");
 document.documentElement.dataset.accent = ["sand", "blue", "green"].includes(
   accent,
@@ -127,8 +137,10 @@ async function launch(app, mode) {
         allowHttp: shortcut.allowHttp,
         shortcutId: shortcut.id,
       });
-      usage.launch(shortcut, result.mode);
+      if (!result.resumed) usage.launch(shortcut, result.mode);
+      openApps.refresh();
       if (transition) {
+        transition.returning = Boolean(result.resumed);
         transition.opening = false;
         if (queuedBrowserView === null) await refreshBrowser();
       }
@@ -180,8 +192,7 @@ async function launchFavorite(app) {
   favoriteLaunchBusy = true;
   favoritesRail.setBusy(true);
   try {
-    // Internal replacements close/open atomically in Rust without a Home event.
-    // External shortcuts still leave browsing and return to the dashboard.
+    // Internal launches keep the old page; external shortcuts park it first.
     if (
       browsing &&
       launchRoute(app).mode !== "internal" &&
@@ -344,12 +355,14 @@ function setView(next) {
     apps: "Applications",
     library: "Library",
     settings: "Settings",
+    open: "Open apps",
   }[view];
   $("#search-area").classList.add("hidden");
   query = "";
   $("#search-box").value = "";
   render();
   if (next === "settings") usage.render();
+  if (next === "open") openApps.refresh();
   window.scrollTo({ top: 0, behavior: "instant" });
 }
 function leaveBrowser() {
@@ -361,6 +374,36 @@ function leaveBrowser() {
   browsing = false;
   document.body.classList.remove("browsing");
   $("#browser-workspace").classList.add("hidden");
+  openApps.refresh();
+}
+
+async function resumeSession(app) {
+  if (launching || browserActionBusy || favoriteLaunchBusy) return;
+  launching = true;
+  const transition = beginBrowserLoading({
+    id: app.shortcutId,
+    title: app.title,
+  });
+  transition.returning = true;
+  $("#browser-loading-title").textContent = `Returning to ${app.title}`;
+  try {
+    await invoke("browser_resume", { sessionId: app.sessionId });
+    transition.opening = false;
+    if (queuedBrowserView === null) await refreshBrowser();
+  } catch (error) {
+    leaveBrowser();
+    setView("open");
+    toast(`Unable to return to ${app.title}. ${String(error)}`);
+  } finally {
+    launching = false;
+    if (queuedBrowserView !== null) {
+      const destination = queuedBrowserView;
+      queuedBrowserView = null;
+      if (browsing) await browserAction("home", destination);
+      else setView(destination);
+    }
+    openApps.refresh();
+  }
 }
 function beginBrowserLoading(app) {
   browserEntry++;
@@ -416,7 +459,8 @@ async function refreshBrowser() {
     $("#service-title").textContent = current.title;
     browserStatus(current.message, ["blocked", "slow"].includes(current.phase));
     if (transition) {
-      $("#browser-loading-title").textContent = `Opening ${current.title}`;
+      $("#browser-loading-title").textContent =
+        `${transition.returning ? "Returning to" : "Opening"} ${current.title}`;
       $("#browser-retry").disabled = browserActionBusy;
       const stalled = ["blocked", "slow"].includes(current.phase);
       $("#browser-loading").classList.toggle("is-stalled", stalled);
@@ -486,6 +530,8 @@ async function browserAction(action, destination = "home") {
 }
 $("#browser-retry").addEventListener("click", () => browserAction("retry"));
 setInterval(refreshBrowser, 1000);
+setInterval(() => openApps.refresh(), 1500);
+openApps.refresh();
 $$("[data-view]").forEach((b) =>
   b.addEventListener("click", () => {
     favoritesRail.close();

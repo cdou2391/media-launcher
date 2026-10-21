@@ -41,6 +41,23 @@
             <span class="glyph">▤</span>
           </button>
         </div>
+        <button
+          class="rail-link open-apps-link"
+          data-view="open"
+          title="Open apps"
+          aria-label="Open apps"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="7" y="7" width="13" height="13" rx="3" />
+            <path d="M16 4H7a3 3 0 0 0-3 3v9" />
+          </svg>
+          <span
+            id="open-app-count"
+            class="open-app-count hidden"
+            aria-hidden="true"
+            >0</span
+          >
+        </button>
         <nav
           id="rail-favorites"
           class="rail-favorites hidden"
@@ -267,6 +284,24 @@
                 Add a media shortcut →
               </button>
             </div>
+          </section>
+          <section id="open-view" class="view" aria-label="Open apps">
+            <div class="subpage-hero">
+              <span class="mini-label">PICK UP WHERE YOU LEFT OFF</span>
+              <h2>Your apps, waiting for you.</h2>
+              <p id="open-app-notice">
+                Apps stay open until you close them or exit AURA.
+              </p>
+            </div>
+            <div id="open-app-list" class="open-app-list"></div>
+            <div id="open-app-empty" class="empty">
+              Nothing kept open yet. Open an app and switch away; it will be
+              waiting here.
+            </div>
+            <p class="open-app-footnote">
+              Closing an app discards its current page. Playback pause depends
+              on the site; muting alone does not stop a video.
+            </p>
           </section>
           <section id="settings-view" class="view" aria-label="Settings">
             <div class="subpage-hero">
