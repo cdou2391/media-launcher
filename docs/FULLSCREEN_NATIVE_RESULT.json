@@ -1,0 +1,190 @@
+{
+  "host": "Windows_NT 10.0.26200 x64",
+  "checks": [
+    "Packaged application renders Home in real WebView2",
+    "Native document scrolling keeps the sidebar, Home and Settings at unchanged viewport bounds, with content beside the 90px rail",
+    "Native WebView2 v1 migration preserves favorite, color, mark and accent across renderer reload",
+    "Sidebar favorites open and switch real native services, highlight the active shortcut, and preserve the active session when reselected",
+    "Internal switches retain the browser shell without Home flashes; the AURA loader remains visible until the delayed remote document is ready",
+    "Native reveal rejects loading and wrong-session requests from trusted UI",
+    "Sidebar Home cancels a delayed native load and later callbacks cannot restore the closed service",
+    "Compact 56px native browser header has only the service title and touch-sized refresh icon",
+    "Remote IPC inaccessible/denied; popup and privileged-origin navigation blocked",
+    "Retry invokes native original-target navigation",
+    "Ten real native child open/Home/close cycles restore Home and keyboard focus",
+    "Ordinary HTTPS Example Domain document loads inside AURA",
+    "All four persistent sidebar destinations close the site and navigate to the chosen AURA view",
+    "Native child bounds reserve the rail/header, including a real site fullscreen request",
+    "Four fullscreen and two windowed HTML fullscreen cycles preserve AURA host mode and viewport; trusted toggle still works",
+    "Native Exit launcher closes application",
+    "Sidebar favorite shortcuts and labels survive a full native process restart",
+    "Usage totals and paused preference survive a complete native process restart",
+    "Favorites, shortcut display values and accent survive a full native process restart"
+  ],
+  "webview2": "155.0.4283.62",
+  "ipc": {
+    "bridgeAbsent": false,
+    "denied": [
+      {
+        "command": "open_target",
+        "denied": true,
+        "message": "Command open_target not allowed by ACL"
+      },
+      {
+        "command": "launch_shortcut",
+        "denied": true,
+        "message": "Command launch_shortcut not allowed by ACL"
+      },
+      {
+        "command": "open_internal",
+        "denied": true,
+        "message": "Command open_internal not allowed by ACL"
+      },
+      {
+        "command": "browser_status",
+        "denied": true,
+        "message": "Command browser_status not allowed by ACL"
+      },
+      {
+        "command": "browser_home",
+        "denied": true,
+        "message": "Command browser_home not allowed by ACL"
+      },
+      {
+        "command": "browser_reveal",
+        "denied": true,
+        "message": "Command browser_reveal not allowed by ACL"
+      },
+      {
+        "command": "browser_retry",
+        "denied": true,
+        "message": "Command browser_retry not allowed by ACL"
+      },
+      {
+        "command": "browser_external",
+        "denied": true,
+        "message": "Command browser_external not allowed by ACL"
+      },
+      {
+        "command": "usage_foreground",
+        "denied": true,
+        "message": "Command usage_foreground not allowed by ACL"
+      },
+      {
+        "command": "app_fullscreen",
+        "denied": true,
+        "message": "Command app_fullscreen not allowed by ACL"
+      },
+      {
+        "command": "plugin:window|close",
+        "denied": true,
+        "message": "Command plugin:window|close not allowed by ACL"
+      },
+      {
+        "command": "plugin:window|set_fullscreen",
+        "denied": true,
+        "message": "Command plugin:window|set_fullscreen not allowed by ACL"
+      },
+      {
+        "command": "plugin:webview|close",
+        "denied": true,
+        "message": "Command plugin:webview|close not allowed by ACL"
+      },
+      {
+        "command": "plugin:event|emit",
+        "denied": true,
+        "message": "Command plugin:event|emit not allowed by ACL"
+      }
+    ]
+  },
+  "https": {
+    "status": "PASS",
+    "url": "https://example.com/",
+    "title": "Example Domain",
+    "httpStatus": 200
+  },
+  "fullscreen": {
+    "fullscreenCycles": 4,
+    "windowedCycles": 2
+  },
+  "windowRestore": {
+    "status": "NOT_RUN",
+    "reason": "Excluded from this scope: earlier Preview 4/5 low-level restore probes produced tiny viewports. This build's manual taskbar/minimize/restore remains unverified."
+  },
+  "usageTiming": {
+    "status": "NOT_RUN",
+    "reason": "Excluded from this scope: earlier full-suite timing was affected by desktop focus. This run verifies stored usage/pause persistence, not duration accuracy or minimize exclusion."
+  },
+  "usage": {
+    "version": 1,
+    "enabled": false,
+    "auraMs": 0,
+    "shortcuts": [
+      {
+        "id": "favorite-one",
+        "title": "Favorite one",
+        "internalMs": 0,
+        "internalLaunches": 2,
+        "externalLaunches": 0,
+        "lastOpenedAt": 1792596864709
+      },
+      {
+        "id": "favorite-two",
+        "title": "Favorite two",
+        "internalMs": 0,
+        "internalLaunches": 3,
+        "externalLaunches": 0,
+        "lastOpenedAt": 1792596868141
+      }
+    ]
+  },
+  "status": "PASS_SCOPED",
+  "date": "2026-10-21",
+  "sourceCommit": "9aa11c07603ef986eefd081e9b5bd04c9e28963f",
+  "ciRun": "https://github.com/cdou2391/media-launcher/actions/runs/39625408346",
+  "nativeScope": "Fullscreen host mode and viewport after HTML fullscreen enter/exit, trusted toggle, pinned sidebar, loading/switching, navigation/security, stored usage/pause preferences, Exit and process persistence. Native duration accuracy and low-level minimize/restore excluded.",
+  "ci": {
+    "status": "success",
+    "nodeTests": 22,
+    "browserTests": 29,
+    "rustTestsPerArchitecture": 6,
+    "architectures": ["x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc"],
+    "artifacts": [
+      {
+        "id": 12358331065,
+        "name": "aura-home-media-arm64",
+        "digest": "sha256:bc38cdacdf7e0a13fc11bcf0abe69a232140866c74895308539fa92ae6d871fc",
+        "downloadDigestVerified": true
+      },
+      {
+        "id": 12357636185,
+        "name": "aura-home-media-x64",
+        "digest": "sha256:2fea734a9e04f4bf6867350785b6c5e9358f3c17d3e4d6aef3f35502d12a5f7d",
+        "downloadDigestVerified": true
+      }
+    ]
+  },
+  "deliveredBinaries": [
+    {
+      "file": "AURA.exe",
+      "sha256": "A341A5EC6CC70CFA983E26DB2A408595EED42D3E7CCDD9CB8D0F7A7B150C7DF2"
+    },
+    {
+      "file": "AURA-x64-setup.exe",
+      "sha256": "8EC4F597F8A43DC2450E87222B847C9E51650E73A208013BF02B2AF743495697"
+    },
+    {
+      "file": "AURA-arm64-setup.exe",
+      "sha256": "35615BF83B848870198370CA9812613B25A1086C9DE6B3F7660661C03BA74FC0"
+    }
+  ],
+  "unverified": [
+    "Physical YouTube playback, touch fullscreen button and Escape behavior",
+    "Physical Surface touch/DPI/rotation and multiple monitors",
+    "ARM64 runtime",
+    "Installer install/uninstall",
+    "Manual Windows taskbar/minimize/restore",
+    "Native foreground duration accuracy and minimized-time exclusion in this scoped delivery",
+    "Provider playback compatibility"
+  ]
+}

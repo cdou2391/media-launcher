@@ -105,7 +105,7 @@ ADR-009 validation: [exact usage result](USAGE_NATIVE_RESULT.json) records nativ
 
 ## ADR-011 - Separate website fullscreen from AURA host mode
 
-**Date:** 2026-10-21. **Status:** Implemented; Windows build/runtime validation pending.
+**Date:** 2026-10-21. **Status:** Implemented; both architecture builds and exact x64 scoped native validation PASS. Physical Surface/YouTube acceptance remains open; see [evidence](FULLSCREEN_NATIVE_RESULT.json).
 
 Tauri 2.12.4 `tauri-runtime-wry` registers a Windows WebView2 fullscreen-element callback that queues the containing window's fullscreen state directly. This loses AURA's existing fullscreen when a video exits. Keep the host's mode as native application state, initialized from configuration and changed only by the authorized local Settings command. Subscribe through pinned Tauri `with_webview` and the already-locked `webview2-com` 0.39.1 interface. Reconcile to the current trusted mode after each runtime fullscreen message; dispatch via a worker because main-thread dispatch executes immediately ahead of the runtime's queued message. Do not change the child bounds or inject site JS. Site fullscreen fills its reserved browser area and keeps navigation reachable. A windowed AURA also retains its mode.
 

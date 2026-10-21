@@ -745,12 +745,12 @@ try {
     result.windowRestore = {
       status: "NOT_RUN",
       reason:
-        "Low-level restore leaves a tiny viewport on this host in both Preview 4 and this build; manual taskbar/fullscreen restore remains unverified.",
+        "Excluded from this scope: earlier Preview 4/5 low-level restore probes produced tiny viewports. This build's manual taskbar/minimize/restore remains unverified.",
     };
     result.usageTiming = {
       status: "NOT_RUN",
       reason:
-        "Full-suite foreground timing is affected by desktop focus on this host. Sidebar-focused validation verifies stored usage/pause persistence, not duration accuracy or minimize exclusion.",
+        "Excluded from this scope: earlier full-suite timing was affected by desktop focus. This run verifies stored usage/pause persistence, not duration accuracy or minimize exclusion.",
     };
     await main.locator('.rail [data-view="settings"]').click();
     await main.locator("#usage-enabled").uncheck();
