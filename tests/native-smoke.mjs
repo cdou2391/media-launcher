@@ -22,8 +22,19 @@ const result = {
   checks: [],
 };
 let fixtureRequests = 0;
-const fixture = http.createServer((request, response) => {
+const heldResponses = new Set();
+const fixture = http.createServer(async (request, response) => {
   if (request.url === "/") fixtureRequests++;
+  if (request.url === "/second")
+    await new Promise((resolve) => {
+      const release = () => {
+        clearTimeout(timer);
+        heldResponses.delete(release);
+        resolve();
+      };
+      const timer = setTimeout(release, 20000);
+      heldResponses.add(release);
+    });
   response.setHeader("Content-Type", "text/html");
   response.end(
     '<!doctype html><html><title>Remote isolation fixture</title><body><h1>Remote isolation fixture</h1><button id="fullscreen" onclick="document.documentElement.requestFullscreen()">Fullscreen</button><button id="popup" onclick="window.open(\'/popup\')">Popup</button><button id="local" onclick="location.href=\'http://tauri.localhost/index.html\'">Local navigation</button></body></html>',
@@ -153,6 +164,53 @@ try {
   );
   await main.locator("#favorites .tile").first().waitFor();
   result.checks.push("Packaged application renders Home in real WebView2");
+  const navigationBeforeScroll = await main.evaluate(() => {
+    const filler = document.createElement("div");
+    filler.id = "native-scroll-fixture";
+    filler.style.height = `${innerHeight * 2}px`;
+    document.querySelector(".main").append(filler);
+    return [
+      ".rail",
+      '.rail-link[data-view="home"]',
+      '.rail-link[data-view="settings"]',
+    ].map((selector) =>
+      document.querySelector(selector).getBoundingClientRect().toJSON(),
+    );
+  });
+  const viewportSize = await main.evaluate(() => ({
+    width: innerWidth,
+    height: innerHeight,
+  }));
+  await main.mouse.move(viewportSize.width - 40, viewportSize.height / 2);
+  await main.mouse.wheel(0, 700);
+  await waitFor(
+    () => main.evaluate(() => scrollY > 100),
+    "native document scrolls independently of navigation",
+  );
+  const navigationAfterScroll = await main.evaluate(() =>
+    [
+      ".rail",
+      '.rail-link[data-view="home"]',
+      '.rail-link[data-view="settings"]',
+    ].map((selector) =>
+      document.querySelector(selector).getBoundingClientRect().toJSON(),
+    ),
+  );
+  assert.deepEqual(navigationAfterScroll, navigationBeforeScroll);
+  assert.equal(
+    await main
+      .locator(".main")
+      .evaluate((el) => el.getBoundingClientRect().left),
+    90,
+  );
+  await main.screenshot({ path: path.join(testFolder, "pinned-sidebar.png") });
+  await main.evaluate(() => {
+    document.querySelector("#native-scroll-fixture").remove();
+    scrollTo(0, 0);
+  });
+  result.checks.push(
+    "Native document scrolling keeps the sidebar, Home and Settings at unchanged viewport bounds, with content beside the 90px rail",
+  );
   await main.evaluate(() => {
     localStorage.removeItem("aura-shortcuts-v2");
     localStorage.setItem(
@@ -190,6 +248,193 @@ try {
   result.checks.push(
     "Native WebView2 v1 migration preserves favorite, color, mark and accent across renderer reload",
   );
+  await main.evaluate((target) => {
+    const data = JSON.parse(localStorage.getItem("aura-shortcuts-v2"));
+    for (const suffix of ["one", "two"])
+      data.shortcuts.push({
+        id: `favorite-${suffix}`,
+        title: `Favorite ${suffix}`,
+        target: suffix === "one" ? target : `${target}/second`,
+        kind: "website",
+        category: "other",
+        favorite: true,
+        color: "#284b69",
+        mark: suffix === "one" ? "F1" : "F2",
+        launchMode: "internal",
+        allowHttp: true,
+      });
+    localStorage.setItem("aura-shortcuts-v2", JSON.stringify(data));
+  }, fixtureUrl);
+  await main.reload();
+  await main
+    .locator('.rail-favorite[data-shortcut-id="favorite-one"]')
+    .waitFor();
+  let favoriteRemote;
+  for (const suffix of ["one", "two", "one", "two"]) {
+    const old = favoriteRemote;
+    if (old)
+      await main.evaluate(() => {
+        window.homeFlashes = 0;
+        window.switchObserver?.disconnect();
+        window.switchObserver = new MutationObserver((records) => {
+          for (const record of records)
+            if (
+              record.oldValue?.includes("browsing") &&
+              !document.body.classList.contains("browsing")
+            )
+              window.homeFlashes++;
+        });
+        window.switchObserver.observe(document.body, {
+          attributes: true,
+          attributeFilter: ["class"],
+          attributeOldValue: true,
+        });
+      });
+    await main
+      .locator(`.rail-favorite[data-shortcut-id="favorite-${suffix}"]`)
+      .click();
+    if (old)
+      await waitFor(() => old.isClosed(), "favorite closes previous service");
+    if (suffix === "two") {
+      await main.locator("#browser-loading:not(.hidden)").waitFor();
+      await waitFor(
+        () => heldResponses.size > 0,
+        "controlled document is held before completion",
+      );
+      assert.match(
+        await main.locator("#browser-loading-title").textContent(),
+        /Favorite two/,
+      );
+      await main.screenshot({
+        path: path.join(testFolder, "switch-loader.png"),
+      });
+      const premature = await main.evaluate(async () => {
+        const current =
+          await window.__TAURI_INTERNALS__.invoke("browser_status");
+        try {
+          await window.__TAURI_INTERNALS__.invoke("browser_reveal", {
+            sessionId: current.sessionId,
+          });
+          return { denied: false, ready: current.ready };
+        } catch (error) {
+          return { denied: true, ready: current.ready, message: String(error) };
+        }
+      });
+      assert.equal(premature.ready, false);
+      assert.equal(
+        premature.denied,
+        true,
+        "A loading child must not reveal prematurely",
+      );
+      for (const release of heldResponses) release();
+    }
+    favoriteRemote = await waitFor(
+      () =>
+        context
+          .pages()
+          .find((page) => page !== main && page.url().startsWith(fixtureUrl)),
+      "favorite opens controlled website",
+    );
+    await favoriteRemote.locator("h1").waitFor();
+    await main.locator("#browser-loading").waitFor({ state: "hidden" });
+    if (old)
+      assert.equal(
+        await main.evaluate(() => window.homeFlashes),
+        0,
+        "A service switch must never reveal Home",
+      );
+    await waitFor(
+      async () =>
+        (await main
+          .locator(`.rail-favorite[data-shortcut-id="favorite-${suffix}"]`)
+          .getAttribute("aria-current")) === "true",
+      "active favorite highlight",
+    );
+    await pause(150);
+    assert.ok(await main.locator("body.browsing").count());
+    assert.equal(context.pages().length, 2);
+    assert.equal(
+      (
+        await main.evaluate(() =>
+          window.__TAURI_INTERNALS__.invoke("browser_status"),
+        )
+      ).shortcutId,
+      `favorite-${suffix}`,
+    );
+  }
+  const favoriteSession = await main.evaluate(() =>
+    window.__TAURI_INTERNALS__.invoke("browser_status"),
+  );
+  const staleReveal = await main.evaluate(async () => {
+    const current = await window.__TAURI_INTERNALS__.invoke("browser_status");
+    try {
+      await window.__TAURI_INTERNALS__.invoke("browser_reveal", {
+        sessionId: current.sessionId + 10000,
+      });
+      return false;
+    } catch {
+      return true;
+    }
+  });
+  assert.equal(
+    staleReveal,
+    true,
+    "A stale reveal must never show another session",
+  );
+  await main.locator('.rail-favorite[data-shortcut-id="favorite-two"]').click();
+  await pause(150);
+  assert.equal(
+    (
+      await main.evaluate(() =>
+        window.__TAURI_INTERNALS__.invoke("browser_status"),
+      )
+    ).sessionId,
+    favoriteSession.sessionId,
+  );
+  assert.ok(!favoriteRemote.isClosed());
+  await main
+    .locator(".rail")
+    .screenshot({ path: path.join(testFolder, "favorites-rail.png") });
+  await main.locator('.rail-link[data-view="home"]').click();
+  await waitFor(
+    () => favoriteRemote.isClosed(),
+    "favorite session returns Home",
+  );
+  await main.locator("body:not(.browsing)").waitFor();
+  assert.equal(
+    await main.locator('.rail-favorite[aria-current="true"]').count(),
+    0,
+  );
+  result.checks.push(
+    "Sidebar favorites open and switch real native services, highlight the active shortcut, and preserve the active session when reselected",
+  );
+  result.checks.push(
+    "Internal switches retain the browser shell without Home flashes; the AURA loader remains visible until the delayed remote document is ready",
+  );
+  result.checks.push(
+    "Native reveal rejects loading and wrong-session requests from trusted UI",
+  );
+  await main.locator('.rail-favorite[data-shortcut-id="favorite-two"]').click();
+  await main.locator("#browser-loading:not(.hidden)").waitFor();
+  await waitFor(
+    () => heldResponses.size > 0,
+    "controlled cancellation document is held",
+  );
+  await main.locator('.rail-link[data-view="home"]').click();
+  await main.locator("body:not(.browsing)").waitFor();
+  for (const release of heldResponses) release();
+  await pause(500);
+  assert.equal(await main.locator("#browser-loading:not(.hidden)").count(), 0);
+  assert.equal(
+    await main.evaluate(() =>
+      window.__TAURI_INTERNALS__.invoke("browser_status"),
+    ),
+    null,
+  );
+  assert.equal(context.pages().length, 1);
+  result.checks.push(
+    "Sidebar Home cancels a delayed native load and later callbacks cannot restore the closed service",
+  );
   const open = async (target = fixtureUrl) => {
     await main.evaluate(
       ({ target }) =>
@@ -208,7 +453,7 @@ try {
     );
     const toolbar = main;
     await main.locator("body.browsing").waitFor();
-    await toolbar.locator("#browser-home").waitFor();
+    await toolbar.locator('.rail-link[data-view="home"]').waitFor();
     assert.equal(
       context.pages().length,
       2,
@@ -226,6 +471,22 @@ try {
     await main.locator('[data-view="apps"]').first().click();
     const { remote, toolbar } = await open();
     if (cycle === 0) {
+      const bar = await toolbar.locator("#browser-workspace").boundingBox();
+      const refresh = await toolbar.locator("#browser-retry").boundingBox();
+      assert.equal(bar.height, 56);
+      assert.ok(refresh.width >= 44 && refresh.height >= 44);
+      assert.ok(refresh.y >= 0 && refresh.y + refresh.height <= 56);
+      assert.equal(await toolbar.locator("#browser-retry").innerText(), "");
+      assert.ok(await toolbar.locator("#browser-retry svg").isVisible());
+      assert.equal(
+        await toolbar
+          .locator("#browser-home, #browser-external, #service-origin")
+          .count(),
+        0,
+      );
+      result.checks.push(
+        "Compact 56px native browser header has only the service title and touch-sized refresh icon",
+      );
       result.ipc = await remote.evaluate(async () => {
         const invoke = window.__TAURI_INTERNALS__?.invoke;
         if (!invoke) return { bridgeAbsent: true };
@@ -247,6 +508,7 @@ try {
           ],
           ["browser_status", {}],
           ["browser_home", {}],
+          ["browser_reveal", { sessionId: 1 }],
           ["browser_retry", {}],
           ["browser_external", {}],
           ["usage_foreground", {}],
@@ -299,11 +561,14 @@ try {
       );
       await remote.locator("#popup").waitFor();
       result.checks.push("Retry invokes native original-target navigation");
+      await main
+        .locator("#browser-workspace")
+        .screenshot({ path: path.join(testFolder, "header.png") });
       await main.screenshot({ path: path.join(testFolder, "workspace.png") });
       await remote.screenshot({ path: path.join(testFolder, "remote.png") });
     }
     await toolbar
-      .locator("#browser-home")
+      .locator('.rail-link[data-view="home"]')
       .click({ noWaitAfter: true })
       .catch((error) => {
         if (!remote.isClosed()) throw error;
@@ -355,7 +620,7 @@ try {
     };
   }
   await https.toolbar
-    .locator("#browser-home")
+    .locator('.rail-link[data-view="home"]')
     .click({ noWaitAfter: true })
     .catch((error) => {
       if (!https.remote.isClosed()) throw error;
@@ -389,7 +654,7 @@ try {
     "Remote width must reserve the sidebar",
   );
   assert.ok(
-    Math.abs(mainSize.height - 128 - siteSize.height) <= 2,
+    Math.abs(mainSize.height - 56 - siteSize.height) <= 2,
     "Remote height must reserve the local header",
   );
   await fullscreen.remote.locator("#fullscreen").click();
@@ -402,137 +667,155 @@ try {
     height: innerHeight,
   }));
   assert.ok(fullscreenSize.width <= mainSize.width - 88);
-  assert.ok(fullscreenSize.height <= mainSize.height - 126);
+  assert.ok(fullscreenSize.height <= mainSize.height - 54);
   assert.ok(
     await main.getByRole("button", { name: "Home", exact: true }).isVisible(),
   );
   await fullscreen.remote.evaluate(() => document.exitFullscreen());
-  await main.locator("#browser-home").click();
+  await main.locator('.rail-link[data-view="home"]').click();
   await waitFor(() => fullscreen.remote.isClosed(), "fullscreen site Home");
   result.checks.push(
     "Native child bounds reserve the rail/header, including a real site fullscreen request",
   );
-  await main.evaluate((target) => {
-    const data = JSON.parse(localStorage.getItem("aura-shortcuts-v2"));
-    data.shortcuts.push({
-      id: "usage-fixture",
-      title: "Usage fixture",
-      target,
-      kind: "website",
-      category: "other",
-      favorite: false,
-      launchMode: "internal",
-      allowHttp: true,
-      color: "#123456",
-      mark: "U",
-    });
-    localStorage.setItem("aura-shortcuts-v2", JSON.stringify(data));
-  }, fixtureUrl);
-  await main.reload();
-  const launchUsage = async () => {
-    await main.locator('.rail [data-view="apps"]').click();
-    await main
-      .locator("#all-apps .tile")
-      .filter({ hasText: "Usage fixture" })
-      .click();
-    await main.locator("body.browsing").waitFor();
-    const childPage = await waitFor(
-      () => context.pages().find((page) => page.url().startsWith(fixtureUrl)),
-      "tracked child",
+  if (process.argv.includes("--sidebar-only")) {
+    result.windowRestore = {
+      status: "NOT_RUN",
+      reason:
+        "Low-level restore leaves a tiny viewport on this host in both Preview 4 and this build; manual taskbar/fullscreen restore remains unverified.",
+    };
+    result.usageTiming = {
+      status: "NOT_RUN",
+      reason:
+        "Full-suite foreground timing is affected by desktop focus on this host. Sidebar-focused validation verifies stored usage/pause persistence, not duration accuracy or minimize exclusion.",
+    };
+    await main.locator('.rail [data-view="settings"]').click();
+    await main.locator("#usage-enabled").uncheck();
+    result.usage = await main.evaluate(() =>
+      JSON.parse(localStorage.getItem("aura-usage-v1")),
     );
-    await childPage.locator("h1").click();
-    assert.equal(await childPage.evaluate(() => document.hasFocus()), true);
-  };
-  await launchUsage();
-  const nativeUsageContext = await main.evaluate(() =>
-    window.__TAURI_INTERNALS__.invoke("browser_status"),
-  );
-  assert.equal(nativeUsageContext.shortcutId, "usage-fixture");
-  assert.ok(nativeUsageContext.sessionId > 0);
-  assert.equal(
-    await main.evaluate(() =>
-      window.__TAURI_INTERNALS__.invoke("usage_foreground"),
-    ),
-    true,
-    "AURA must be foreground to validate foreground timing",
-  );
-  await pause(6500);
-  await main.locator('.rail [data-view="settings"]').click();
-  await main.locator("#usage-enabled").uncheck();
-  const usageBefore = await main.evaluate(() =>
-    JSON.parse(localStorage.getItem("aura-usage-v1")),
-  );
-  const timed = usageBefore.shortcuts.find((s) => s.id === "usage-fixture");
-  assert.equal(timed.internalLaunches, 1);
-  assert.ok(
-    timed.internalMs >= 2000,
-    "Actual remote-child foreground time must accrue",
-  );
-  await launchUsage();
-  await pause(1500);
-  await main.locator('.rail [data-view="settings"]').click();
-  const pausedUsage = await main.evaluate(() =>
-    JSON.parse(localStorage.getItem("aura-usage-v1")),
-  );
-  assert.deepEqual(
-    pausedUsage,
-    usageBefore,
-    "Paused usage must not count launches or time",
-  );
-  await main.locator("#usage-clear").click();
-  await main.locator("#usage-cancel").click();
-  assert.ok(
-    (await main.locator("#usage-rows").innerText()).includes("Usage fixture"),
-  );
-  await main.locator("#usage-clear").click();
-  await main.locator("#usage-clear-confirm").click();
-  assert.equal(await main.locator("#usage-rows tr").count(), 0);
-  await main.locator("#usage-enabled").check();
-  await launchUsage();
-  await pause(3000);
-  await main.locator('.rail [data-view="settings"]').click();
-  await main.locator("#usage-enabled").uncheck();
-  result.usage = await main.evaluate(() =>
-    JSON.parse(localStorage.getItem("aura-usage-v1")),
-  );
-  assert.equal(result.usage.shortcuts[0].internalLaunches, 1);
-  assert.ok(result.usage.shortcuts[0].internalMs > 0);
-  result.checks.push(
-    "Native usage tracks the identified remote child in foreground; pause, clear/cancel and per-shortcut counts work",
-  );
-  await main.locator("#usage-enabled").check();
-  await pause(1200);
-  await ownWindowVisibility(6);
-  await waitFor(
-    async () =>
-      !(await main.evaluate(() =>
+  } else {
+    await main.evaluate((target) => {
+      const data = JSON.parse(localStorage.getItem("aura-shortcuts-v2"));
+      data.shortcuts.push({
+        id: "usage-fixture",
+        title: "Usage fixture",
+        target,
+        kind: "website",
+        category: "other",
+        favorite: false,
+        launchMode: "internal",
+        allowHttp: true,
+        color: "#123456",
+        mark: "U",
+      });
+      localStorage.setItem("aura-shortcuts-v2", JSON.stringify(data));
+    }, fixtureUrl);
+    await main.reload();
+    const launchUsage = async () => {
+      await main.locator('.rail [data-view="apps"]').click();
+      await main
+        .locator("#all-apps .tile")
+        .filter({ hasText: "Usage fixture" })
+        .click();
+      await main.locator("body.browsing").waitFor();
+      const childPage = await waitFor(
+        () => context.pages().find((page) => page.url().startsWith(fixtureUrl)),
+        "tracked child",
+      );
+      await childPage.locator("h1").click();
+      assert.equal(await childPage.evaluate(() => document.hasFocus()), true);
+    };
+    await launchUsage();
+    const nativeUsageContext = await main.evaluate(() =>
+      window.__TAURI_INTERNALS__.invoke("browser_status"),
+    );
+    assert.equal(nativeUsageContext.shortcutId, "usage-fixture");
+    assert.ok(nativeUsageContext.sessionId > 0);
+    assert.equal(
+      await main.evaluate(() =>
         window.__TAURI_INTERNALS__.invoke("usage_foreground"),
-      )),
-    "minimized AURA is not foreground",
-  );
-  // A checkpoint after minimization may still persist valid foreground time
-  // earned before it. Compare settled checkpoints rather than stale storage.
-  await pause(6000);
-  const minimizedStart = await main.evaluate(() =>
-    JSON.parse(localStorage.getItem("aura-usage-v1")),
-  );
-  await pause(6000);
-  const minimizedEnd = await main.evaluate(() =>
-    JSON.parse(localStorage.getItem("aura-usage-v1")),
-  );
-  assert.deepEqual(
-    minimizedEnd,
-    minimizedStart,
-    "Minimized app and site time must stop",
-  );
-  await ownWindowVisibility(9);
-  result.checks.push(
-    "Actual native minimize/restore stops foreground duration without inspecting other applications",
-  );
-  await main.locator("#usage-enabled").uncheck();
-  result.usage = await main.evaluate(() =>
-    JSON.parse(localStorage.getItem("aura-usage-v1")),
-  );
+      ),
+      true,
+      "AURA must be foreground to validate foreground timing",
+    );
+    await pause(6500);
+    await main.locator('.rail [data-view="settings"]').click();
+    await main.locator("#usage-enabled").uncheck();
+    const usageBefore = await main.evaluate(() =>
+      JSON.parse(localStorage.getItem("aura-usage-v1")),
+    );
+    const timed = usageBefore.shortcuts.find((s) => s.id === "usage-fixture");
+    assert.equal(timed.internalLaunches, 1);
+    assert.ok(
+      timed.internalMs >= 2000,
+      "Actual remote-child foreground time must accrue",
+    );
+    await launchUsage();
+    await pause(1500);
+    await main.locator('.rail [data-view="settings"]').click();
+    const pausedUsage = await main.evaluate(() =>
+      JSON.parse(localStorage.getItem("aura-usage-v1")),
+    );
+    assert.deepEqual(
+      pausedUsage,
+      usageBefore,
+      "Paused usage must not count launches or time",
+    );
+    await main.locator("#usage-clear").click();
+    await main.locator("#usage-cancel").click();
+    assert.ok(
+      (await main.locator("#usage-rows").innerText()).includes("Usage fixture"),
+    );
+    await main.locator("#usage-clear").click();
+    await main.locator("#usage-clear-confirm").click();
+    assert.equal(await main.locator("#usage-rows tr").count(), 0);
+    await main.locator("#usage-enabled").check();
+    await launchUsage();
+    await pause(3000);
+    await main.locator('.rail [data-view="settings"]').click();
+    await main.locator("#usage-enabled").uncheck();
+    result.usage = await main.evaluate(() =>
+      JSON.parse(localStorage.getItem("aura-usage-v1")),
+    );
+    assert.equal(result.usage.shortcuts[0].internalLaunches, 1);
+    assert.ok(result.usage.shortcuts[0].internalMs > 0);
+    result.checks.push(
+      "Native usage tracks the identified remote child in foreground; pause, clear/cancel and per-shortcut counts work",
+    );
+    await main.locator("#usage-enabled").check();
+    await pause(1200);
+    await ownWindowVisibility(6);
+    await waitFor(
+      async () =>
+        !(await main.evaluate(() =>
+          window.__TAURI_INTERNALS__.invoke("usage_foreground"),
+        )),
+      "minimized AURA is not foreground",
+    );
+    // A checkpoint after minimization may still persist valid foreground time
+    // earned before it. Compare settled checkpoints rather than stale storage.
+    await pause(6000);
+    const minimizedStart = await main.evaluate(() =>
+      JSON.parse(localStorage.getItem("aura-usage-v1")),
+    );
+    await pause(6000);
+    const minimizedEnd = await main.evaluate(() =>
+      JSON.parse(localStorage.getItem("aura-usage-v1")),
+    );
+    assert.deepEqual(
+      minimizedEnd,
+      minimizedStart,
+      "Minimized app and site time must stop",
+    );
+    await ownWindowVisibility(9);
+    result.checks.push(
+      "Actual native minimize/restore stops foreground duration without inspecting other applications",
+    );
+    await main.locator("#usage-enabled").uncheck();
+    result.usage = await main.evaluate(() =>
+      JSON.parse(localStorage.getItem("aura-usage-v1")),
+    );
+  }
   await main.locator('[data-view="settings"]').first().click();
   await main.locator("#exit-app").click();
   await waitFor(
@@ -584,6 +867,16 @@ try {
   assert.equal(persisted.shortcut.color, "#123456");
   assert.equal(persisted.shortcut.mark, "M");
   assert.equal(persisted.accent, "blue");
+  for (const suffix of ["one", "two"]) {
+    assert.ok(
+      await restarted
+        .locator(`.rail-favorite[data-shortcut-id="favorite-${suffix}"]`)
+        .isVisible(),
+    );
+  }
+  result.checks.push(
+    "Sidebar favorite shortcuts and labels survive a full native process restart",
+  );
   const persistedUsage = await restarted.evaluate(() =>
     JSON.parse(localStorage.getItem("aura-usage-v1")),
   );
@@ -603,7 +896,11 @@ try {
     "restarted application exit",
   );
   result.status =
-    result.https.status === "PASS" ? "PASS" : "PARTIAL_HTTPS_UNVERIFIED";
+    result.https.status === "PASS"
+      ? process.argv.includes("--sidebar-only")
+        ? "PASS_SCOPED"
+        : "PASS"
+      : "PARTIAL_HTTPS_UNVERIFIED";
   if (result.https.status !== "PASS") process.exitCode = 1;
 } catch (error) {
   result.pages = browser
@@ -615,6 +912,7 @@ try {
   result.processOutput = processOutput;
   process.exitCode = 1;
 } finally {
+  for (const release of heldResponses) release();
   if (browser) await browser.close().catch(() => {});
   if (child.exitCode === null) child.kill();
   fixture.closeAllConnections();

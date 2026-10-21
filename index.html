@@ -41,7 +41,25 @@
             <span class="glyph">▤</span>
           </button>
         </div>
+        <nav
+          id="rail-favorites"
+          class="rail-favorites hidden"
+          aria-label="Favorite applications"
+        >
+          <h2 class="rail-favorites-label">Favorites</h2>
+          <div id="rail-favorite-list" class="rail-favorite-list"></div>
+        </nav>
         <div class="rail-bottom">
+          <button
+            id="rail-favorites-toggle"
+            class="rail-link rail-favorites-toggle hidden"
+            aria-label="Favorite applications"
+            aria-controls="rail-favorites"
+            aria-expanded="false"
+            title="Favorite applications"
+          >
+            <span class="glyph" aria-hidden="true">★</span>
+          </button>
           <button
             class="rail-link"
             data-view="settings"
@@ -62,18 +80,48 @@
           <div class="browser-heading">
             <div class="browser-identity">
               <strong id="service-title">Website</strong>
-              <span id="service-origin"></span>
             </div>
             <div class="browser-actions">
-              <button id="browser-home" class="secondary">⌂ Home</button>
-              <button id="browser-retry" class="secondary">Retry</button>
-              <button id="browser-external" class="secondary">
-                Open externally ↗
+              <button
+                id="browser-retry"
+                class="browser-refresh"
+                aria-label="Refresh website"
+                aria-describedby="browser-status"
+                title="Refresh website"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M20 7v5h-5M19.1 7A8 8 0 1 0 20 15" />
+                </svg>
               </button>
             </div>
           </div>
-          <p id="browser-status" role="status" aria-live="polite"></p>
+          <p
+            id="browser-status"
+            class="sr-only"
+            role="status"
+            aria-live="polite"
+          ></p>
         </section>
+        <div
+          id="browser-loading"
+          class="hidden"
+          role="status"
+          aria-live="polite"
+          aria-busy="false"
+        >
+          <div class="browser-loading-content">
+            <div class="aura-orbit" aria-hidden="true">
+              <span class="aura-orbit-ring"></span>
+              <span class="aura-orbit-mark">A<span>↗</span></span>
+            </div>
+            <span class="browser-loading-eyebrow">AURA / THE NEXT MOMENT</span>
+            <h2 id="browser-loading-title">Opening your app</h2>
+            <p id="browser-loading-detail">Your next moment is on its way.</p>
+            <div class="aura-loading-lights" aria-hidden="true">
+              <i></i><i></i><i></i>
+            </div>
+          </div>
+        </div>
         <header class="topbar">
           <div class="breadcrumb">
             <span class="eyebrow">YOUR PERSONAL MEDIA SPACE</span>

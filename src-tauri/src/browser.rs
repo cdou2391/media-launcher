@@ -19,6 +19,7 @@ pub struct BrowserStatus {
     pub origin: String,
     pub phase: String,
     pub message: String,
+    pub ready: bool,
 }
 
 impl BrowserStatus {
@@ -27,15 +28,16 @@ impl BrowserStatus {
             return false;
         }
         self.phase = "loading".into();
-        self.message = "Loading website. Home and external fallback remain available.".into();
+        self.message = "Loading website.".into();
         self.origin = origin;
         true
     }
     fn page_received(&mut self, origin: String) {
+        self.ready = true;
         // WebView2 can complete a cancelled load after a warning was recorded.
         if matches!(self.phase.as_str(), "loading" | "slow") {
             self.phase = "received".into();
-            self.message = "Page received. If login, playback or the page fails, use Retry or Open externally.".into();
+            self.message = "Page received.".into();
             self.origin = origin;
         }
     }
@@ -96,7 +98,7 @@ fn update(app: &AppHandle, id: u64, phase: &str, message: &str, origin: Option<S
 // These logical insets match the browser workspace in src/style.css. Native
 // bounds reserve the rail and toolbar; remote HTML cannot draw over either.
 const RAIL_WIDTH: f64 = 90.0;
-const TOOLBAR_HEIGHT: f64 = 128.0;
+const TOOLBAR_HEIGHT: f64 = 56.0;
 
 fn service_size(width: f64, height: f64) -> LogicalSize<f64> {
     LogicalSize::new(
@@ -123,7 +125,7 @@ pub fn resize_service(app: &AppHandle) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
-fn finish(app: &AppHandle, expected_id: Option<u64>) -> Result<(), String> {
+fn finish(app: &AppHandle, expected_id: Option<u64>, return_home: bool) -> Result<(), String> {
     let state = app.state::<BrowserState>();
     {
         let guard = state
@@ -143,6 +145,9 @@ fn finish(app: &AppHandle, expected_id: Option<u64>) -> Result<(), String> {
         .session
         .lock()
         .map_err(|_| "Browser state is unavailable")? = None;
+    if !return_home {
+        return Ok(());
+    }
     if let Some(main) = app.get_window("main") {
         let _ = app.emit_to("main", "aura-home", ());
         main.show().map_err(|e| e.to_string())?;
@@ -171,6 +176,9 @@ pub async fn open_internal(
     if title.is_empty() || title.chars().count() > 48 || title.chars().any(char::is_control) {
         return Err("Invalid service name".into());
     }
+    // Replace the remote child under the existing trusted shell. A successful
+    // switch never emits Home; a failed close retains the previous session.
+    finish(&app, None, false)?;
     let id;
     {
         let state = app.state::<BrowserState>();
@@ -178,9 +186,6 @@ pub async fn open_internal(
             .session
             .lock()
             .map_err(|_| "Browser state is unavailable")?;
-        if guard.is_some() {
-            return Err("Return to AURA Home before opening another service".into());
-        }
         id = state.next.fetch_add(1, Ordering::Relaxed) + 1;
         *guard = Some(Session {
             id,
@@ -195,13 +200,14 @@ pub async fn open_internal(
                 title: title.clone(),
                 origin: url.origin().ascii_serialization(),
                 phase: "loading".into(),
-                message: "Opening the website. Home and external fallback remain available.".into(),
+                message: "Opening website.".into(),
+                ready: false,
             },
         });
     }
     let result = create_view(&app, id, url, allow_http);
     if let Err(error) = result {
-        let _ = finish(&app, Some(id));
+        let _ = finish(&app, Some(id), true);
         return Err(format!(
             "Internal browsing could not start: {error}. Try Open externally."
         ));
@@ -231,33 +237,41 @@ fn create_view(app: &AppHandle, id: u64, url: tauri::Url, allow_http: bool) -> R
     let popup_app = app.clone();
     let load_app = app.clone();
     let builder = tauri::webview::WebviewBuilder::new("service", WebviewUrl::External(url))
+        .background_color(tauri::utils::config::Color(11, 18, 29, 255))
         .disable_drag_drop_handler()
         .on_navigation(move |next| {
             // No local asset, file, custom scheme or privileged origin navigation.
             let allowed = security::website_url(next.as_str(), allow_http).is_ok()
                 && !security::trusted_page("main", next);
-            if !allowed { update(&nav_app, id, "blocked", "This navigation is blocked. Use Open externally for supported sign-in flows.", None); }
+            if !allowed { update(&nav_app, id, "blocked", "This navigation is blocked. Return using the sidebar and choose External for this shortcut if sign-in requires it.", None); }
             else { navigation_started(&nav_app, id, next.origin().ascii_serialization()); }
             allowed
         })
         .on_new_window(move |_, _| {
-            update(&popup_app, id, "blocked", "This website requested a popup. Use Open externally to continue sign-in or open that experience.", None);
+            update(&popup_app, id, "blocked", "This website requested a popup. Return using the sidebar and choose External for this shortcut to continue sign-in.", None);
             NewWindowResponse::Deny
         })
         .on_download(|_, _| false)
         .on_page_load(move |_, payload| {
-            if payload.event() == PageLoadEvent::Finished {
+            if payload.event() == PageLoadEvent::Finished
+                && security::website_url(payload.url().as_str(), allow_http).is_ok() {
                 page_received(&load_app, id, payload.url().origin().ascii_serialization());
             }
         })
 ;
     // Window::add_child must run from this async command, not a UI event handler.
-    main.add_child(
-        builder,
-        LogicalPosition::new(RAIL_WIDTH, TOOLBAR_HEIGHT),
-        service_size(size.width, size.height),
-    )
-    .map_err(|e| e.to_string())?;
+    // Build outside the visible client area, then hide before applying the
+    // normal bounds. HTML cannot cover a native child: trusted UI explicitly
+    // reveals this exact session after its first document-finished signal.
+    let service = main
+        .add_child(
+            builder,
+            LogicalPosition::new(-size.width - 1.0, TOOLBAR_HEIGHT),
+            service_size(size.width, size.height),
+        )
+        .map_err(|e| e.to_string())?;
+    service.hide().map_err(|e| e.to_string())?;
+    resize_service(app)?;
     app.emit_to("main", "aura-browser", ())
         .map_err(|e| e.to_string())?;
 
@@ -277,7 +291,7 @@ pub fn browser_status(window: Webview, app: AppHandle) -> Result<Option<BrowserS
         {
             session.status.phase = "slow".into();
             session.status.message =
-                "The website is taking too long. Check your connection, Retry or Open externally."
+                "The website is taking too long. Check your connection and refresh, or return using the sidebar and choose External for this shortcut."
                     .into();
         }
     }
@@ -289,7 +303,35 @@ pub async fn browser_home(window: Webview, app: AppHandle) -> Result<(), String>
     security::authorize(&window, false)?;
     let state = app.state::<BrowserState>();
     let _operation = state.operation.lock().await;
-    finish(&app, None)
+    finish(&app, None, true)
+}
+
+#[tauri::command]
+pub async fn browser_reveal(
+    window: Webview,
+    app: AppHandle,
+    session_id: u64,
+) -> Result<(), String> {
+    security::authorize(&window, false)?;
+    let state = app.state::<BrowserState>();
+    let _operation = state.operation.lock().await;
+    {
+        let guard = state
+            .session
+            .lock()
+            .map_err(|_| "Browser state is unavailable")?;
+        let session = guard
+            .as_ref()
+            .filter(|s| s.id == session_id)
+            .ok_or("This website session has closed")?;
+        if !session.status.ready {
+            return Err("The website has not received its first document yet".into());
+        }
+    }
+    app.get_webview("service")
+        .ok_or("The website has closed")?
+        .show()
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -311,7 +353,7 @@ pub async fn browser_retry(window: Webview, app: AppHandle) -> Result<(), String
         &app,
         id,
         "loading",
-        "Retrying the original shortcut.",
+        "Refreshing the original shortcut.",
         Some(url.origin().ascii_serialization()),
     );
     app.get_webview("service")
@@ -336,7 +378,7 @@ pub async fn browser_external(window: Webview, app: AppHandle) -> Result<(), Str
     };
     // Only the originally approved target, never a remote-supplied popup URL.
     launch::open_external(&target, allow_http)?;
-    finish(&app, None)
+    finish(&app, None, true)
 }
 
 #[cfg(test)]
@@ -362,12 +404,14 @@ mod tests {
             origin: "https://example.com".into(),
             phase: "blocked".into(),
             message: "Navigation blocked".into(),
+            ready: false,
         };
         status.navigation_started("http://tauri.localhost".into());
         status.page_received("http://tauri.localhost".into());
         assert_eq!(status.phase, "blocked");
         assert_eq!(status.message, "Navigation blocked");
         assert_eq!(status.origin, "https://example.com");
+        assert!(status.ready);
         status.phase = "loading".into();
         status.page_received("https://example.org".into());
         assert_eq!(status.phase, "received");

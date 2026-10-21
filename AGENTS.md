@@ -46,6 +46,16 @@ Do not spend Phase 1 on Jellyfin sync, native Windows app discovery, UI rewrites
 - Keep security-sensitive validation on the Rust side, not just in JavaScript.
 - If an official service does not support embedding, implement a respectful compatibility fallback.
 
+## Build delivery — standing user instruction (2026-10-21)
+
+After every successful Windows application build, commit and push its source and publish the exact built binaries as the next GitHub release in `cdou2391/media-launcher`. The user has authorized this ongoing delivery workflow; do not ask again for routine commit, push or release publication.
+
+- Inspect existing tags/releases and choose the next unused version. Continue the current `v0.1.0-preview.N` sequence while delivering preview builds, unless the user requests a different version/release channel. Preserve existing releases and assets.
+- Tag the exact build source commit. Include the standalone x64 EXE and architecture-specific installers that were actually built, plus SHA256 checksums, launch instructions and validation evidence.
+- Run the relevant available checks, verify uploaded asset digests and public download links, and state actual results and remaining device/runtime gaps in the release notes. Do not publish a failed build or reuse older binaries as if they came from the new source.
+- Return the new release link and direct EXE download in the handoff. Record delivery in README and docs/PROGRESS.md.
+- This instruction applies to Windows executable/installer builds; documentation edits and frontend preview/check builds do not require creating a binary release.
+
 ## Required handoff format
 
 In your completion message provide: **implemented**, **files changed**, **tests run and results**, **still blocked or unverified**, and **next recommended checklist item**. Do not claim features delivered just because they appear in a plan.

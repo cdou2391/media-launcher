@@ -1,0 +1,174 @@
+{
+  "host": "Windows_NT 10.0.26200 x64",
+  "checks": [
+    "Packaged application renders Home in real WebView2",
+    "Native WebView2 v1 migration preserves favorite, color, mark and accent across renderer reload",
+    "Sidebar favorites open and switch real native services, highlight the active shortcut, and preserve the active session when reselected",
+    "Compact 56px native browser header has only the service title and touch-sized refresh icon",
+    "Remote IPC inaccessible/denied; popup and privileged-origin navigation blocked",
+    "Retry invokes native original-target navigation",
+    "Ten real native child open/Home/close cycles restore Home and keyboard focus",
+    "Ordinary HTTPS Example Domain document loads inside AURA",
+    "All four persistent sidebar destinations close the site and navigate to the chosen AURA view",
+    "Native child bounds reserve the rail/header, including a real site fullscreen request",
+    "Native usage tracks the identified remote child in foreground; pause, clear/cancel and per-shortcut counts work",
+    "Actual native minimize/restore stops foreground duration without inspecting other applications",
+    "Native Exit launcher closes application",
+    "Sidebar favorite shortcuts and labels survive a full native process restart",
+    "Usage totals and paused preference survive a complete native process restart",
+    "Favorites, shortcut display values and accent survive a full native process restart"
+  ],
+  "webview2": "155.0.4283.62",
+  "ipc": {
+    "bridgeAbsent": false,
+    "denied": [
+      {
+        "command": "open_target",
+        "denied": true,
+        "message": "Command open_target not allowed by ACL"
+      },
+      {
+        "command": "launch_shortcut",
+        "denied": true,
+        "message": "Command launch_shortcut not allowed by ACL"
+      },
+      {
+        "command": "open_internal",
+        "denied": true,
+        "message": "Command open_internal not allowed by ACL"
+      },
+      {
+        "command": "browser_status",
+        "denied": true,
+        "message": "Command browser_status not allowed by ACL"
+      },
+      {
+        "command": "browser_home",
+        "denied": true,
+        "message": "Command browser_home not allowed by ACL"
+      },
+      {
+        "command": "browser_retry",
+        "denied": true,
+        "message": "Command browser_retry not allowed by ACL"
+      },
+      {
+        "command": "browser_external",
+        "denied": true,
+        "message": "Command browser_external not allowed by ACL"
+      },
+      {
+        "command": "usage_foreground",
+        "denied": true,
+        "message": "Command usage_foreground not allowed by ACL"
+      },
+      {
+        "command": "plugin:window|close",
+        "denied": true,
+        "message": "Command plugin:window|close not allowed by ACL"
+      },
+      {
+        "command": "plugin:window|set_fullscreen",
+        "denied": true,
+        "message": "Command plugin:window|set_fullscreen not allowed by ACL"
+      },
+      {
+        "command": "plugin:webview|close",
+        "denied": true,
+        "message": "Command plugin:webview|close not allowed by ACL"
+      },
+      {
+        "command": "plugin:event|emit",
+        "denied": true,
+        "message": "Command plugin:event|emit not allowed by ACL"
+      }
+    ]
+  },
+  "https": {
+    "status": "PASS",
+    "url": "https://example.com/",
+    "title": "Example Domain",
+    "httpStatus": 200
+  },
+  "usage": {
+    "version": 1,
+    "enabled": false,
+    "auraMs": 2998,
+    "shortcuts": [
+      {
+        "id": "usage-fixture",
+        "title": "Usage fixture",
+        "internalMs": 1998,
+        "internalLaunches": 1,
+        "externalLaunches": 0,
+        "lastOpenedAt": 1792535846810
+      }
+    ]
+  },
+  "status": "PASS",
+  "date": "2026-10-21",
+  "sourceCommit": "2a7bbb6045aed108997c4ffa7894e1202ffb8df1",
+  "ciRun": "https://github.com/cdou2391/media-launcher/actions/runs/39508617678",
+  "ci": {
+    "status": "success",
+    "nodeTests": 22,
+    "browserTests": 20,
+    "rustTestsPerArchitecture": 6,
+    "architectures": ["x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc"],
+    "artifacts": [
+      {
+        "id": 12305455521,
+        "name": "aura-home-media-arm64",
+        "digest": "sha256:b9eb6b29f88d375726c7e21af6fb007ffa65b6aa9c4467f2c31c7eb8ea16e26f",
+        "downloadDigestVerified": true
+      },
+      {
+        "id": 12304074698,
+        "name": "aura-home-media-x64",
+        "digest": "sha256:6a2fca10b48ea59523e71d7f1bba46263cc0691048da70e0d484e92e368eaa3d",
+        "downloadDigestVerified": true
+      }
+    ]
+  },
+  "favorites": {
+    "nativeSwitchSequence": [
+      "favorite-one",
+      "favorite-two",
+      "favorite-one",
+      "favorite-two"
+    ],
+    "activeHighlightValidated": true,
+    "activeReselectPreservesSession": true,
+    "processRestartPersistence": true,
+    "nativeScreenshotVisuallyInspected": true,
+    "browserPreviewChecks": [
+      "favorite edits and persistence",
+      "search independence",
+      "long-list overflow at 620x470",
+      "phone panel and keyboard dismissal",
+      "delayed Home event protection",
+      "close-failure stops replacement launch",
+      "external-mode routing (mock native)"
+    ]
+  },
+  "deliveredBinaries": [
+    {
+      "file": "AURA.exe",
+      "sha256": "E82210C94A3FCEEBA16329EB0335D1079B3F167C110E27E3F332CC60B690B1D4"
+    },
+    {
+      "file": "AURA-x64-setup.exe",
+      "sha256": "0961B699AB913588C28222441B182E10669108D4DF8AAAE2A46DBC3B650FED3A"
+    },
+    {
+      "file": "AURA-arm64-setup.exe",
+      "sha256": "3556BEEA868292C871D1AC21FB91DAD431526C01B9F2D046A40F911195B3B617"
+    }
+  ],
+  "unverified": [
+    "Physical Surface touch/DPI/rotation",
+    "ARM64 runtime",
+    "Provider login/playback",
+    "Installer install/uninstall"
+  ]
+}
