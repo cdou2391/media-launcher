@@ -96,6 +96,8 @@ The stable spike's separate controls visibly obscured the user's site. A single 
 
 ## Local usage boundary (ADR-009)
 
+Fullscreen ownership (ADR-011): native `WindowMode` records the host mode independently from a remote document's fullscreen element. Only trusted `app_fullscreen` changes it. The Windows service view subscribes to WebView2's native fullscreen event and queues reconciliation after Tauri's automatic host change, preserving the latest mode across enter/exit and child close. Registration completes before the child is exposed. Generic window fullscreen-set permission is removed. HTML fullscreen retains the reserved 90px/56px trusted navigation insets; no site script or remote privilege is introduced.
+
 The trusted Settings UI keeps versioned aggregate usage under aura-usage-v1, separate from shortcuts. Only IDs/titles, durations, launch counts and last-launch timestamps are retained. The trusted-main-only usage_foreground command returns whether AURA's own HWND equals the Windows foreground window and is not minimized; remote webviews receive no new capability. Browser status exposes only its session generation and optional shortcut identity to trusted callers for attribution. One-second samples credit matching foreground intervals; sleep gaps and clock discontinuities are dropped. Explicit native acknowledgement precedes launch counting. External app/tab durations are unavailable. Local storage errors preserve session totals, corrupt/future data pauses tracking without overwrite, and user-confirmed clear affects only usage.
 
 ## Favorite shortcut rail

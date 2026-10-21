@@ -4,6 +4,8 @@ A touch-first Windows media launcher built with Tauri 2, Rust, Vite and vanilla 
 
 ## Current development status — 2026-10-21
 
+Fullscreen follow-up: website HTML fullscreen now reconciles to AURA's separately tracked host-window mode. Leaving a video should preserve fullscreen AURA; a windowed AURA stays windowed. Settings uses a trusted `app_fullscreen` command, with the generic fullscreen setter removed from capabilities. Windows build/runtime verification for this change is pending; Preview 5 below predates the fix.
+
 Phase 0 safeguards and Phase 1 application code are implemented. **Compatible websites open beside AURA's pinned sidebar and switch directly with an AURA loader.** Both native architectures build and pass six Rust tests in CI. The latest x64 executable passes eighteen scoped WebView2 statements, including pinned scrolling, switching/loading, navigation/fullscreen, thirteen remote IPC denials, Exit and persistence. Native foreground-duration/window-restore cases are excluded from this focused run and remain unverified; see progress for the full-suite failures and scope. Physical Surface touch/DPI/rotation, ARM64 runtime and provider playback remain unverified.
 
 - Versioned v2 shortcuts retain v1 favorites, custom targets, colors and marks. Migration keeps the original v1 key and a backup. Unreadable or future-version data is preserved; a visible notice explains session-only changes.

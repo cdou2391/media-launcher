@@ -512,6 +512,7 @@ try {
           ["browser_retry", {}],
           ["browser_external", {}],
           ["usage_foreground", {}],
+          ["app_fullscreen", { value: false }],
           ["plugin:window|close", { label: "main" }],
           ["plugin:window|set_fullscreen", { label: "main", value: false }],
           ["plugin:webview|close", { label: "main" }],
@@ -672,10 +673,73 @@ try {
     await main.getByRole("button", { name: "Home", exact: true }).isVisible(),
   );
   await fullscreen.remote.evaluate(() => document.exitFullscreen());
+  const nativeFullscreen = () =>
+    main.evaluate(() =>
+      window.__TAURI_INTERNALS__.invoke("plugin:window|is_fullscreen", {
+        label: "main",
+      }),
+    );
+  await waitFor(nativeFullscreen, "AURA stays fullscreen after the site exits");
+  // Repeated enter/exit must preserve the host mode and viewport, not only
+  // reserve child bounds while the element happens to be fullscreen.
+  for (let cycle = 0; cycle < 3; cycle++) {
+    await fullscreen.remote.locator("#fullscreen").click();
+    await waitFor(
+      () =>
+        fullscreen.remote.evaluate(() => Boolean(document.fullscreenElement)),
+      "repeated element fullscreen entry",
+    );
+    await fullscreen.remote.evaluate(() => document.exitFullscreen());
+    await waitFor(nativeFullscreen, "repeated exit preserves AURA fullscreen");
+    await pause(300);
+    assert.equal(await nativeFullscreen(), true);
+    assert.deepEqual(
+      await main.evaluate(() => ({ width: innerWidth, height: innerHeight })),
+      mainSize,
+    );
+  }
+  result.fullscreen = { fullscreenCycles: 4, windowedCycles: 0 };
   await main.locator('.rail-link[data-view="home"]').click();
   await waitFor(() => fullscreen.remote.isClosed(), "fullscreen site Home");
   result.checks.push(
     "Native child bounds reserve the rail/header, including a real site fullscreen request",
+  );
+  await main.locator('.rail-link[data-view="settings"]').click();
+  await main.locator("#toggle-fullscreen").click();
+  await waitFor(
+    async () => !(await nativeFullscreen()),
+    "trusted windowed toggle",
+  );
+  const windowedSize = await main.evaluate(() => ({
+    width: innerWidth,
+    height: innerHeight,
+  }));
+  const windowed = await open();
+  for (let cycle = 0; cycle < 2; cycle++) {
+    await windowed.remote.locator("#fullscreen").click();
+    await waitFor(
+      () => windowed.remote.evaluate(() => Boolean(document.fullscreenElement)),
+      "windowed element fullscreen entry",
+    );
+    await waitFor(
+      async () => !(await nativeFullscreen()),
+      "site cannot change windowed host mode",
+    );
+    await windowed.remote.evaluate(() => document.exitFullscreen());
+    await pause(300);
+    assert.equal(await nativeFullscreen(), false);
+    assert.deepEqual(
+      await main.evaluate(() => ({ width: innerWidth, height: innerHeight })),
+      windowedSize,
+    );
+  }
+  result.fullscreen.windowedCycles = 2;
+  await main.locator('.rail-link[data-view="settings"]').click();
+  await waitFor(() => windowed.remote.isClosed(), "windowed site Settings");
+  await main.locator("#toggle-fullscreen").click();
+  await waitFor(nativeFullscreen, "trusted fullscreen toggle still works");
+  result.checks.push(
+    "Four fullscreen and two windowed HTML fullscreen cycles preserve AURA host mode and viewport; trusted toggle still works",
   );
   if (process.argv.includes("--sidebar-only")) {
     result.windowRestore = {

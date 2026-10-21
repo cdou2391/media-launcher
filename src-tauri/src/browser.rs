@@ -205,7 +205,7 @@ pub async fn open_internal(
             },
         });
     }
-    let result = create_view(&app, id, url, allow_http);
+    let result = create_view(&app, id, url, allow_http).await;
     if let Err(error) = result {
         let _ = finish(&app, Some(id), true);
         return Err(format!(
@@ -216,7 +216,7 @@ pub async fn open_internal(
 }
 
 #[cfg(not(feature = "embedded-browser"))]
-fn create_view(
+async fn create_view(
     _app: &AppHandle,
     _id: u64,
     _url: tauri::Url,
@@ -226,7 +226,12 @@ fn create_view(
 }
 
 #[cfg(feature = "embedded-browser")]
-fn create_view(app: &AppHandle, id: u64, url: tauri::Url, allow_http: bool) -> Result<(), String> {
+async fn create_view(
+    app: &AppHandle,
+    id: u64,
+    url: tauri::Url,
+    allow_http: bool,
+) -> Result<(), String> {
     let main = app.get_window("main").ok_or("AURA Home is unavailable")?;
     let scale = main.scale_factor().map_err(|e| e.to_string())?;
     let size = main
@@ -271,6 +276,8 @@ fn create_view(app: &AppHandle, id: u64, url: tauri::Url, allow_http: bool) -> R
         )
         .map_err(|e| e.to_string())?;
     service.hide().map_err(|e| e.to_string())?;
+    #[cfg(target_os = "windows")]
+    crate::window_mode::isolate_site_fullscreen(&service, app).await?;
     resize_service(app)?;
     app.emit_to("main", "aura-browser", ())
         .map_err(|e| e.to_string())?;

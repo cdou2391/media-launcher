@@ -68,6 +68,8 @@ Compact browser controls follow-up (2026-10-21): browser tests PASS the 56px hea
 
 ## Compatibility observations template
 
+Fullscreen regression (ADR-011): test AURA initially fullscreen, at least four website HTML fullscreen enter/exit cycles and unchanged native host mode/viewport; test windowed AURA for two cycles without changing host mode or dimensions; verify Settings still toggles the host. Deny remote `app_fullscreen` as well as generic window commands. Repeat video exit via touch and Escape on physical Surface, then verify sidebar/Home, switching while a fullscreen element is active and multi-monitor/DPI. Native automated validation for the new regression is pending; the earlier bounds-only fullscreen checks did not cover this reported exit bug.
+
 ```text
 Service:
 URL / app version:

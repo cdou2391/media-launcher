@@ -605,7 +605,7 @@ $("#toggle-fullscreen").addEventListener("click", async () => {
   try {
     if (native) {
       const win = getCurrentWindow();
-      await win.setFullscreen(!(await win.isFullscreen()));
+      await invoke("app_fullscreen", { value: !(await win.isFullscreen()) });
     } else if (document.fullscreenElement) {
       await document.exitFullscreen();
     } else {

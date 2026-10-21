@@ -103,6 +103,16 @@ References: [GetForegroundWindow](https://learn.microsoft.com/en-us/windows/win3
 
 ADR-009 validation: [exact usage result](USAGE_NATIVE_RESULT.json) records native child-focus timing, pause, clear/cancel, minimized-time exclusion/restore, process restart persistence and 12 remote command denials. Both installers pass CI. Physical Surface input/DPI/rotation, sleep/lock and ARM64 runtime remain open.
 
+## ADR-011 - Separate website fullscreen from AURA host mode
+
+**Date:** 2026-10-21. **Status:** Implemented; Windows build/runtime validation pending.
+
+Tauri 2.12.4 `tauri-runtime-wry` registers a Windows WebView2 fullscreen-element callback that queues the containing window's fullscreen state directly. This loses AURA's existing fullscreen when a video exits. Keep the host's mode as native application state, initialized from configuration and changed only by the authorized local Settings command. Subscribe through pinned Tauri `with_webview` and the already-locked `webview2-com` 0.39.1 interface. Reconcile to the current trusted mode after each runtime fullscreen message; dispatch via a worker because main-thread dispatch executes immediately ahead of the runtime's queued message. Do not change the child bounds or inject site JS. Site fullscreen fills its reserved browser area and keeps navigation reachable. A windowed AURA also retains its mode.
+
+Handler registration is awaited before exposing the child; failures use launch recovery. The handler lives with CoreWebView2, captures no COM object or child handle, and reads current host intent rather than a stale session snapshot. Remote commands remain denied; replace the generic fullscreen-set capability with narrow `app_fullscreen` plus existing native caller authorization. Test native host state and dimensions after exit, repeated cycles and trusted Settings toggles; bounds during fullscreen alone are insufficient. Any runtime dependency upgrade must recheck handler order and native regression. No general Windows restore fix or provider playback claim follows from this change.
+
+Reference: [Microsoft WebView2 fullscreen-element event](https://learn.microsoft.com/en-us/dotnet/api/microsoft.web.webview2.core.corewebview2.containsfullscreenelementchanged).
+
 ## ADR-010 - Direct service replacement with a trusted loading shell
 
 **Date:** 2026-10-21. **Status:** Implemented; both CI builds and exact x64 native validation PASS. Physical acceptance remains open.

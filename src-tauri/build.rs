@@ -10,6 +10,7 @@ fn main() {
             "browser_retry",
             "browser_external",
             "usage_foreground",
+            "app_fullscreen",
         ]),
     ))
     .expect("Failed to build AURA permissions");

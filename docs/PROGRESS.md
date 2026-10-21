@@ -4,6 +4,18 @@
 
 Phase 0 safeguards and Phase 1 application code are implemented. Both architectures build and pass Rust tests in CI; the x64 package passes real WebView2 automation. Phase exit gates remain OPEN for physical touch/fullscreen/DPI/rotation, ARM64 runtime, provider login/playback and remaining baseline local-file/app launch checks. No Phase 2+ feature was added.
 
+## Website fullscreen preserves AURA mode — implementation awaiting native build
+
+Reproduced the user's fullscreen exit bug with the exact Preview 5 executable: the native fixture enters and exits HTML fullscreen, then the new assertion times out waiting for AURA to remain fullscreen. Earlier bounds-only tests missed the host-window state after exit. Raw failure is retained in ignored `.tools/native-smoke-1792596011632/result.json`.
+
+Tauri 2.12.4's Windows runtime registers a `ContainsFullScreenElementChanged` handler that queues host `SetFullscreen(true/false)` directly. Added a separate native host-mode state initialized from window configuration and changed Settings to a trusted `app_fullscreen` command. A native WebView2 handler reconciles website fullscreen transitions to the latest trusted mode, queued after the runtime handler. Remote HTML fullscreen remains confined to the child view; rail/header insets stay reserved. Initialization failures use existing launch-error recovery; callbacks belong to the child and read the latest host mode even during close/switch. No scripts or capabilities are granted to remote content. Removed the trusted generic fullscreen setter grant.
+
+**Changed files:** src/main.js; src-tauri/Cargo.toml; src-tauri/Cargo.lock; src-tauri/build.rs; src-tauri/capabilities/default.json; src-tauri/src/lib.rs; src-tauri/src/browser.rs; src-tauri/src/window_mode.rs (new); tests/security-config.test.js; tests/ui/controls.spec.js; tests/native-smoke.mjs; README.md; docs/PROGRESS.md; docs/ARCHITECTURE.md; docs/DECISIONS.md; docs/ACCEPTANCE_TESTS.md.
+
+**Checks so far:** lint/format, 22 Node/config tests, production Vite and Rust format/locked offline metadata PASS. The first new browser mock lacked Tauri window metadata and failed before calling the command; corrected that fixture. Browser rerun and independent Windows x64/ARM64 build/runtime validation pending. Native regression now covers repeated fullscreen and windowed cycles, viewport preservation, the real Settings toggle and the additional remote command denial. No new EXE is claimed yet.
+
+**Next:** build both architectures, run the regression on the exact new x64 binary, then deliver the next unused preview release under the standing instruction. Physical YouTube touch/Escape, taskbar restore, DPI/rotation, ARM64 runtime and provider playback remain unverified.
+
 ## Pinned sidebar - built; focused native validation complete
 
 The user reported navigation moving with the page. A real wheel-scroll regression reproduced the old rail moving from y=0 to y=-1000: `position: sticky` was constrained by an overflow ancestor. The rail now uses fixed viewport positioning with a matching main-content offset. Desktop/compact layouts consistently reserve 90px, matching native browser bounds and preventing the previous 68px-to-90px width jump when entering a website. The phone preview retains its fixed bottom bar and zero left content offset. Favorites continue scrolling independently, with Home and Settings anchored.

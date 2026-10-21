@@ -3,6 +3,7 @@ mod launch;
 mod policy;
 mod security;
 mod usage;
+mod window_mode;
 
 use tauri::{webview::NewWindowResponse, Manager, Webview, WebviewWindowBuilder};
 
@@ -38,6 +39,9 @@ pub fn run() {
     tauri::Builder::default()
         .manage(browser::BrowserState::default())
         .setup(|app| {
+            app.manage(window_mode::WindowMode(std::sync::atomic::AtomicBool::new(
+                app.config().app.windows[0].fullscreen,
+            )));
             WebviewWindowBuilder::from_config(app, &app.config().app.windows[0])?
                 .on_navigation(|url| security::trusted_page("main", url))
                 .on_new_window(|_, _| NewWindowResponse::Deny)
@@ -66,7 +70,8 @@ pub fn run() {
             browser::browser_reveal,
             browser::browser_retry,
             browser::browser_external,
-            usage::usage_foreground
+            usage::usage_foreground,
+            window_mode::app_fullscreen
         ])
         .run(tauri::generate_context!())
         .expect("Failed to start AURA Home Media");
