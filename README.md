@@ -4,6 +4,8 @@ A touch-first Windows media launcher built with Tauri 2, Rust, Vite and vanilla 
 
 ## Current development status — 2026-10-22
 
+App cards now contain visible favorite and options controls alongside a separate launch area. Home, Applications, sidebar favorites and Open apps share locally bundled provider logos. Edit shortcut also supports custom raster icons with automatic-logo reset; existing marks, colors and favorites are preserved. [Icon assets and behavior](docs/APP_ICON_ASSETS.md). Local checks pass; the new Windows package is pending validation.
+
 Open-app retention is built and verified in the exact x64 EXE. Switching between internal sites or using Home keeps the previous page. The sidebar's Open apps button shows retained pages with Return and Close actions, and favorite marks show a small kept-open indicator. Up to six apps are retained without silent eviction; closing releases a page. Page state lasts for this AURA process, not across Exit/restart. Background views are muted and WebView2 suspension is best effort: pause a site's media player before switching to preserve playback position. [Exact evidence and limitations](docs/OPEN_APPS_NATIVE_RESULT.json).
 
 Fullscreen follow-up: website HTML fullscreen now reconciles to AURA's separately tracked host-window mode. Leaving a video preserves fullscreen AURA; a windowed AURA stays windowed. Settings uses a trusted `app_fullscreen` command, with the generic fullscreen setter removed from capabilities. Both architecture builds pass; the exact x64 EXE passes four fullscreen and two windowed cycles with unchanged host mode/dimensions and working Settings toggle. [Exact scoped evidence](docs/FULLSCREEN_NATIVE_RESULT.json); physical YouTube/touch/Escape and multi-monitor checks remain open.

@@ -506,6 +506,20 @@
             ><input type="checkbox" id="shortcut-http" /> Allow unencrypted HTTP
             for this shortcut (for example a local media server)</label
           >
+          <label for="shortcut-icon">Custom icon</label>
+          <input
+            id="shortcut-icon"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            aria-describedby="icon-status"
+          />
+          <div class="icon-settings">
+            <span id="icon-status" role="status"
+              >Automatic logo or monogram</span
+            ><button id="reset-icon" type="button" class="secondary">
+              Use automatic icon
+            </button>
+          </div>
           <label for="shortcut-category">Category</label
           ><select id="shortcut-category" name="category">
             <option value="video">Movies & TV</option>

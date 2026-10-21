@@ -1,4 +1,5 @@
 import "./style.css";
+import { appIcon, readUploadedIcon } from "./components/app-icon.js";
 import { native, invoke, getCurrentWindow, listen } from "./native.js";
 import { targetKind, websiteUrl } from "./services/targets.js";
 import { defaults } from "./services/defaults.js";
@@ -23,6 +24,9 @@ try {
 const repository = loadShortcuts(storage, defaults);
 let apps = repository.shortcuts;
 let editingId = null;
+let pendingIcon = null;
+let iconReading = false;
+let iconRequest = 0;
 let dialogTrigger = null;
 let pendingLaunch = null;
 let launching = false;
@@ -219,18 +223,17 @@ $("#fallback-external").addEventListener("click", () => {
   closeFeedback();
   launch(app, "external");
 });
-function tile(app, showControls = false) {
+function tile(app) {
+  const card = document.createElement("article");
+  card.className = "app-card";
+  card.dataset.shortcutId = app.id;
+  card.style.setProperty("--tile-color", app.color || "#32485b");
   const button = document.createElement("button");
   button.className = "tile";
   button.type = "button";
-  button.style.setProperty("--tile-color", app.color || "#32485b");
   button.setAttribute("aria-label", `Launch ${app.title}`);
-  const logo = document.createElement("span");
-  logo.className = "tile-logo";
-  logo.textContent = app.mark || app.title[0]?.toUpperCase() || "•";
-  const foot = document.createElement("div");
+  const foot = document.createElement("span");
   foot.className = "tile-foot";
-  const titleContainer = document.createElement("div");
   const name = document.createElement("span");
   name.className = "tile-name";
   name.textContent = app.title;
@@ -242,73 +245,104 @@ function tile(app, showControls = false) {
       : app.category === "video"
         ? "MOVIES & TV"
         : "SHORTCUT";
-  titleContainer.append(name, type);
-  foot.append(titleContainer);
-  if (!showControls) {
-    const arrow = document.createElement("span");
-    arrow.textContent = "↗";
-    arrow.style.color = "var(--accent)";
-    foot.append(arrow);
+  foot.append(name, type);
+  const mode = document.createElement("span");
+  mode.className = "tile-mode";
+  mode.textContent = routeLabel(app);
+  try {
+    button.title = launchRoute(app).reason;
+  } catch (error) {
+    button.title = String(error);
   }
-  const modeLabel = document.createElement("span");
-  modeLabel.className = "tile-mode";
-  modeLabel.textContent = routeLabel(app);
-  button.title = (() => {
-    try {
-      return launchRoute(app).reason;
-    } catch (error) {
-      return String(error);
-    }
-  })();
-  button.append(logo, foot, modeLabel);
+  button.append(appIcon(app, "tile-logo"), foot, mode);
   button.addEventListener("click", () => launch(app));
-  if (showControls) {
-    const controls = document.createElement("div");
-    controls.className = "tile-controls";
-    const star = document.createElement("button");
-    star.className = "tile-star" + (app.favorite ? "" : " off");
-    star.type = "button";
-    star.title = app.favorite ? "Remove from favorites" : "Add to favorites";
-    star.setAttribute("aria-label", star.title);
-    star.textContent = "★";
-    star.addEventListener("click", () => {
-      app.favorite = !app.favorite;
-      save();
-      render();
-      toast(
-        `${app.title} ${app.favorite ? "added to" : "removed from"} favorites`,
-      );
+  const controls = document.createElement("div");
+  controls.className = "tile-controls";
+  const star = document.createElement("button");
+  star.className = "tile-star" + (app.favorite ? "" : " off");
+  star.type = "button";
+  star.title = app.favorite ? "Remove from favorites" : "Add to favorites";
+  star.setAttribute("aria-label", star.title);
+  star.setAttribute("aria-pressed", String(app.favorite));
+  star.textContent = app.favorite ? "★" : "☆";
+  star.addEventListener("click", () => {
+    const grid = card.parentElement.id;
+    const index = [...card.parentElement.children].indexOf(card);
+    app.favorite = !app.favorite;
+    save();
+    render();
+    const cards = [
+      ...document.getElementById(grid).querySelectorAll(".app-card"),
+    ];
+    (
+      cards
+        .find((c) => c.dataset.shortcutId === app.id)
+        ?.querySelector(".tile-star") ||
+      cards[Math.min(index, cards.length - 1)]?.querySelector(".tile-star") ||
+      $("#add-shortcut")
+    ).focus();
+    toast(
+      `${app.title} ${app.favorite ? "added to" : "removed from"} favorites`,
+    );
+  });
+  const menu = document.createElement("details");
+  menu.className = "card-menu";
+  const toggle = document.createElement("summary");
+  toggle.textContent = "•••";
+  toggle.setAttribute("aria-label", `Options for ${app.title}`);
+  const panel = document.createElement("div");
+  panel.className = "card-menu-panel";
+  const action = (label, text, callback) => {
+    const control = document.createElement("button");
+    control.type = "button";
+    control.textContent = text;
+    control.setAttribute("aria-label", label);
+    control.addEventListener("click", () => {
+      menu.open = false;
+      toggle.focus();
+      callback();
     });
-    const del = document.createElement("button");
-    del.type = "button";
-    del.className = "delete";
-    del.textContent = "Remove";
-    del.setAttribute("aria-label", `Remove ${app.title}`);
-    del.addEventListener("click", () => {
-      if (confirm(`Remove ${app.title} shortcut?`)) {
-        apps = apps.filter((a) => a.id !== app.id);
-        save();
-        render();
-        toast("Shortcut removed");
-      }
-    });
-    const edit = document.createElement("button");
-    edit.type = "button";
-    edit.className = "tile-edit";
-    edit.textContent = "Edit";
-    edit.setAttribute("aria-label", "Edit " + app.title);
-    edit.addEventListener("click", () => openDialog(app));
-    controls.append(star, edit, del);
-    const wrap = document.createElement("div");
-    wrap.style.position = "relative";
-    wrap.style.minWidth = "0";
-    wrap.append(button, controls);
-    controls.style.cssText =
-      "display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;";
-    return wrap;
-  }
-  return button;
+    panel.append(control);
+  };
+  action(`Edit ${app.title}`, "Edit shortcut", () => openDialog(app));
+  action(`Launch options for ${app.title}`, "Launch options", () => {
+    openDialog(app);
+    $("#shortcut-mode").focus();
+  });
+  action(`Remove ${app.title}`, "Remove shortcut", () => {
+    if (!confirm(`Remove ${app.title} shortcut?`)) return;
+    apps = apps.filter((a) => a.id !== app.id);
+    save();
+    render();
+    $("#add-shortcut").focus();
+    toast("Shortcut removed");
+  });
+  menu.addEventListener("toggle", () => {
+    toggle.setAttribute("aria-expanded", String(menu.open));
+    if (menu.open)
+      document.querySelectorAll(".card-menu[open]").forEach((other) => {
+        if (other !== menu) other.open = false;
+      });
+  });
+  toggle.setAttribute("aria-expanded", "false");
+  menu.append(toggle, panel);
+  controls.append(star, menu);
+  card.append(button, controls);
+  return card;
 }
+document.addEventListener("click", (event) => {
+  document.querySelectorAll(".card-menu[open]").forEach((menu) => {
+    if (!menu.contains(event.target)) menu.open = false;
+  });
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape")
+    document.querySelectorAll(".card-menu[open]").forEach((menu) => {
+      menu.open = false;
+      menu.querySelector("summary").focus();
+      event.stopImmediatePropagation();
+    });
+});
 function render() {
   favoritesRail.render(apps);
   const fav = $("#favorites");
@@ -331,7 +365,7 @@ function render() {
     e.className = "empty";
     e.textContent = "No matching shortcuts.";
     all.append(e);
-  } else filtered.forEach((a) => all.append(tile(a, true)));
+  } else filtered.forEach((a) => all.append(tile(a)));
   $("#app-count").textContent =
     `${filtered.length} shortcut${filtered.length === 1 ? "" : "s"}`;
   $$(".swatch").forEach((x) =>
@@ -544,8 +578,15 @@ $$("[data-view]").forEach((b) =>
   }),
 );
 function openDialog(app) {
+  iconRequest++;
+  iconReading = false;
+  $("#shortcut-form button[type=submit]").disabled = false;
   dialogTrigger = document.activeElement;
   editingId = app?.id || null;
+  pendingIcon = app?.icon || null;
+  $("#icon-status").textContent = pendingIcon
+    ? "Custom icon saved"
+    : "Automatic logo or monogram";
   $("#shortcut-form").reset();
   $("#dialog-title").textContent = editingId
     ? "Edit shortcut"
@@ -563,6 +604,7 @@ function openDialog(app) {
   $("#shortcut-title").focus();
 }
 function closeDialog() {
+  iconRequest++;
   $("#dialog-backdrop").classList.add("hidden");
   $("#shortcut-form").reset();
   $(".app-shell").inert = false;
@@ -579,8 +621,40 @@ $("#close-dialog").addEventListener("click", closeDialog);
 $("#dialog-backdrop").addEventListener("click", (e) => {
   if (e.target.id === "dialog-backdrop") closeDialog();
 });
+$("#shortcut-icon").addEventListener("change", async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const request = ++iconRequest;
+  iconReading = true;
+  $("#icon-status").textContent = "Preparing icon…";
+  const submit = $("#shortcut-form button[type=submit]");
+  submit.disabled = true;
+  try {
+    const icon = await readUploadedIcon(file);
+    if (request !== iconRequest) return;
+    pendingIcon = icon;
+    $("#icon-status").textContent = "Custom icon ready";
+  } catch (error) {
+    if (request !== iconRequest) return;
+    $("#icon-status").textContent = String(error.message || error);
+  } finally {
+    if (request === iconRequest) {
+      iconReading = false;
+      submit.disabled = false;
+      event.target.value = "";
+    }
+  }
+});
+$("#reset-icon").addEventListener("click", () => {
+  iconRequest++;
+  iconReading = false;
+  $("#shortcut-form button[type=submit]").disabled = false;
+  pendingIcon = null;
+  $("#icon-status").textContent = "Automatic logo or monogram";
+});
 $("#shortcut-form").addEventListener("submit", (e) => {
   e.preventDefault();
+  if (iconReading) return;
   const title = $("#shortcut-title").value.trim();
   const target = $("#shortcut-target").value.trim();
   if (!title || !validTarget(target)) {
@@ -600,6 +674,7 @@ $("#shortcut-form").addEventListener("submit", (e) => {
   const previous = apps.find((app) => app.id === editingId);
   const shortcut = normalizeShortcut({
     ...previous,
+    icon: pendingIcon,
     id: editingId || crypto.randomUUID(),
     title,
     target,
@@ -733,7 +808,7 @@ document.addEventListener("keydown", (e) => {
     return;
   const a = document.activeElement;
   if (["INPUT", "TEXTAREA", "SELECT"].includes(a?.tagName)) return;
-  const controls = $$("button:not([disabled])").filter(
+  const controls = $$("button:not([disabled]), summary").filter(
     (el) =>
       (el.getClientRects().length &&
         el.closest(".view")?.classList.contains("active")) ||

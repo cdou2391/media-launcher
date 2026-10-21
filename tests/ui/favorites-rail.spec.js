@@ -105,6 +105,10 @@ test("sidebar favorites stay in sync with edits and persist independently of sea
   await expect(
     page.getByRole("button", { name: "Open favorite YouTube", exact: true }),
   ).toHaveCount(0);
+  await page
+    .locator("#all-apps")
+    .getByLabel("Options for Plex", { exact: true })
+    .click();
   await page.getByRole("button", { name: "Edit Plex", exact: true }).click();
   await page.getByLabel("Name", { exact: true }).fill("Plex hub");
   await page

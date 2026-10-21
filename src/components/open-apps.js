@@ -1,3 +1,4 @@
+import { appIcon } from "./app-icon.js";
 export function setupOpenApps({
   native,
   invoke,
@@ -30,7 +31,13 @@ export function setupOpenApps({
       const shortcuts = getShortcuts();
       const next = JSON.stringify([
         items,
-        shortcuts.map(({ id, color, mark }) => ({ id, color, mark })),
+        shortcuts.map(({ id, color, mark, icon, target }) => ({
+          id,
+          color,
+          mark,
+          icon,
+          target,
+        })),
       ]);
       if (next === snapshot) return;
       snapshot = next;
@@ -46,11 +53,12 @@ export function setupOpenApps({
         const card = document.createElement("article");
         card.className = "open-app-card";
         card.dataset.sessionId = String(app.sessionId);
-        const mark = document.createElement("span");
-        mark.className = "open-app-mark";
-        mark.textContent = shortcut?.mark || app.title[0] || "A";
-        mark.style.backgroundColor = shortcut?.color || "#284b69";
-        mark.setAttribute("aria-hidden", "true");
+        const mark = appIcon(shortcut || app, "open-app-mark");
+        card.dataset.state = app.active
+          ? "active"
+          : app.sleeping
+            ? "sleeping"
+            : "kept";
         const info = document.createElement("div");
         info.className = "open-app-info";
         const title = document.createElement("h3");

@@ -105,3 +105,7 @@ The trusted Settings UI keeps versioned aggregate usage under aura-usage-v1, sep
 ## Favorite shortcut rail
 
 The trusted local favorites-rail component projects existing v2 favorite records into the sidebar, reusing safe text marks and colors without network icon requests or a new schema. Primary navigation and Settings remain fixed while favorites scroll. Phone previews present the same favorites in a panel above the bottom bar; native browsing retains the 90px sidebar and 56px header bounds. Selection uses the current native shortcut ID. Switching closes the old service through browser_home before launch_shortcut; a failed close prevents a replacement launch. Reselecting the current shortcut preserves its session. Home events query native state and compare a local browser-entry generation so a delayed close event cannot hide a new service. All operations stay in the trusted main webview with existing native validation/capabilities.
+
+## Shared app cards (ADR-013)
+
+Home and Applications share an article containing independent launch, favorite and options targets. Sidebar favorites and Open apps use the same local icon renderer. Provider assets resolve from validated host boundaries; custom raster icons are optional bounded PNG data in v2 shortcuts. No remote favicon lookup or native permissions are added. See APP_ICON_ASSETS.md for sources, upload limits and fallback behavior.

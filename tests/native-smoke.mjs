@@ -201,6 +201,79 @@ try {
   );
   await main.locator("#favorites .tile").first().waitFor();
   result.checks.push("Packaged application renders Home in real WebView2");
+  await waitFor(
+    () =>
+      main
+        .locator("#favorites .app-icon img")
+        .evaluateAll(
+          (images) =>
+            images.length === 5 &&
+            images.every((img) => img.complete && img.naturalWidth > 0),
+        ),
+    "bundled provider logos decoded",
+  );
+  const firstCard = main.locator("#favorites .app-card").first();
+  const cardOptions = firstCard.getByLabel("Options for YouTube", {
+    exact: true,
+  });
+  await cardOptions.click();
+  await main.keyboard.press("Escape");
+  assert.equal(
+    await cardOptions.evaluate((el) => el === document.activeElement),
+    true,
+  );
+  await cardOptions.click();
+  await firstCard
+    .getByRole("button", { name: "Edit YouTube", exact: true })
+    .click();
+  const uploadedPng = await main.evaluate(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 128;
+    canvas.getContext("2d").fillRect(0, 0, 128, 128);
+    return canvas.toDataURL("image/png").split(",")[1];
+  });
+  await main.getByLabel("Custom icon", { exact: true }).setInputFiles({
+    name: "native-icon.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(uploadedPng, "base64"),
+  });
+  await waitFor(
+    async () =>
+      (await main.locator("#icon-status").textContent()) ===
+      "Custom icon ready",
+    "native icon decoding",
+  );
+  await main
+    .getByRole("button", { name: "Save shortcut", exact: true })
+    .click();
+  const iconSource = await firstCard.locator("img").getAttribute("src");
+  assert.match(iconSource, /^data:image\/png;base64,/);
+  assert.equal(
+    await main
+      .locator(".rail-favorite")
+      .first()
+      .locator("img")
+      .getAttribute("src"),
+    iconSource,
+  );
+  await cardOptions.click();
+  await firstCard
+    .getByRole("button", { name: "Edit YouTube", exact: true })
+    .click();
+  await main
+    .getByRole("button", { name: "Use automatic icon", exact: true })
+    .click();
+  await main
+    .getByRole("button", { name: "Save shortcut", exact: true })
+    .click();
+  assert.equal(await main.locator("#launch-feedback").isVisible(), false);
+  await main.screenshot({
+    path: path.join(testFolder, "cards-native.png"),
+    fullPage: true,
+  });
+  result.checks.push(
+    "Bundled logos decode; in-card options preserve focus without launching; raster icon upload/reset updates cards and sidebar in real WebView2",
+  );
   const navigationBeforeScroll = await main.evaluate(() => {
     const filler = document.createElement("div");
     filler.id = "native-scroll-fixture";
