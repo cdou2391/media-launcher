@@ -1,0 +1,216 @@
+{
+  "host": "Windows_NT 10.0.26200 x64",
+  "checks": [
+    "Packaged application renders Home in real WebView2",
+    "Native document scrolling keeps the sidebar, Home and Settings at unchanged viewport bounds, with content beside the 90px rail",
+    "Native WebView2 v1 migration preserves favorite, color, mark and accent across renderer reload",
+    "Sidebar favorites open and switch real native services, highlight the active shortcut, and preserve the active session when reselected",
+    "Internal switches retain the browser shell without Home flashes; the AURA loader remains visible until the delayed remote document is ready",
+    "Native reveal rejects loading and wrong-session requests from trusted UI",
+    "Sidebar Home cancels a delayed native load and later callbacks cannot restore the closed service",
+    "Compact 56px native browser header has only the service title and touch-sized refresh icon",
+    "Remote IPC inaccessible/denied; popup and privileged-origin navigation blocked",
+    "Retry invokes native original-target navigation",
+    "Ten real native child open/Home/close cycles restore Home and keyboard focus",
+    "Ordinary HTTPS Example Domain document loads inside AURA",
+    "All four persistent sidebar destinations close the site and navigate to the chosen AURA view",
+    "Native child bounds reserve the rail/header, including a real site fullscreen request",
+    "Native Exit launcher closes application",
+    "Sidebar favorite shortcuts and labels survive a full native process restart",
+    "Usage totals and paused preference survive a complete native process restart",
+    "Favorites, shortcut display values and accent survive a full native process restart"
+  ],
+  "webview2": "155.0.4283.62",
+  "ipc": {
+    "bridgeAbsent": false,
+    "denied": [
+      {
+        "command": "open_target",
+        "denied": true,
+        "message": "Command open_target not allowed by ACL"
+      },
+      {
+        "command": "launch_shortcut",
+        "denied": true,
+        "message": "Command launch_shortcut not allowed by ACL"
+      },
+      {
+        "command": "open_internal",
+        "denied": true,
+        "message": "Command open_internal not allowed by ACL"
+      },
+      {
+        "command": "browser_status",
+        "denied": true,
+        "message": "Command browser_status not allowed by ACL"
+      },
+      {
+        "command": "browser_home",
+        "denied": true,
+        "message": "Command browser_home not allowed by ACL"
+      },
+      {
+        "command": "browser_reveal",
+        "denied": true,
+        "message": "Command browser_reveal not allowed by ACL"
+      },
+      {
+        "command": "browser_retry",
+        "denied": true,
+        "message": "Command browser_retry not allowed by ACL"
+      },
+      {
+        "command": "browser_external",
+        "denied": true,
+        "message": "Command browser_external not allowed by ACL"
+      },
+      {
+        "command": "usage_foreground",
+        "denied": true,
+        "message": "Command usage_foreground not allowed by ACL"
+      },
+      {
+        "command": "plugin:window|close",
+        "denied": true,
+        "message": "Command plugin:window|close not allowed by ACL"
+      },
+      {
+        "command": "plugin:window|set_fullscreen",
+        "denied": true,
+        "message": "Command plugin:window|set_fullscreen not allowed by ACL"
+      },
+      {
+        "command": "plugin:webview|close",
+        "denied": true,
+        "message": "Command plugin:webview|close not allowed by ACL"
+      },
+      {
+        "command": "plugin:event|emit",
+        "denied": true,
+        "message": "Command plugin:event|emit not allowed by ACL"
+      }
+    ]
+  },
+  "https": {
+    "status": "PASS",
+    "url": "https://example.com/",
+    "title": "Example Domain",
+    "httpStatus": 200
+  },
+  "windowRestore": {
+    "status": "NOT_RUN",
+    "reason": "Low-level restore leaves a tiny viewport on this host in both Preview 4 and this build; manual taskbar/fullscreen restore remains unverified."
+  },
+  "usageTiming": {
+    "status": "NOT_RUN",
+    "reason": "Full-suite foreground timing is affected by desktop focus on this host. Sidebar-focused validation verifies stored usage/pause persistence, not duration accuracy or minimize exclusion."
+  },
+  "usage": {
+    "version": 1,
+    "enabled": false,
+    "auraMs": 2000,
+    "shortcuts": [
+      {
+        "id": "favorite-one",
+        "title": "Favorite one",
+        "internalMs": 0,
+        "internalLaunches": 2,
+        "externalLaunches": 0,
+        "lastOpenedAt": 1792586415324
+      },
+      {
+        "id": "favorite-two",
+        "title": "Favorite two",
+        "internalMs": 1003,
+        "internalLaunches": 3,
+        "externalLaunches": 0,
+        "lastOpenedAt": 1792586418672
+      }
+    ]
+  },
+  "status": "PASS_SCOPED",
+  "nativeScope": "Sidebar scrolling, loading/switching, security, stored usage/pause preferences, Exit and restart persistence. Native foreground duration and the failing baseline low-level window-restore helper are excluded and recorded as unverified.",
+  "date": "2026-10-21",
+  "sourceCommit": "338c4181f61cf12021eda2a0938ad636640e7670",
+  "ciRun": "https://github.com/cdou2391/media-launcher/actions/runs/39598060196",
+  "ci": {
+    "status": "success",
+    "nodeTests": 22,
+    "browserTests": 28,
+    "rustTestsPerArchitecture": 6,
+    "architectures": ["x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc"],
+    "artifacts": [
+      {
+        "id": 12345915919,
+        "name": "aura-home-media-arm64",
+        "digest": "sha256:9b32670206c38d6a4a7ea0635064c062b3f77fc7190d393063c7ec52dd843c00",
+        "downloadDigestVerified": true
+      },
+      {
+        "id": 12345126961,
+        "name": "aura-home-media-x64",
+        "digest": "sha256:0e96ea56e35b74488cf89e5782184fff0375e023cde6325a87523c8a576b04cf",
+        "downloadDigestVerified": true
+      }
+    ]
+  },
+  "switching": {
+    "nativeSequence": [
+      "favorite-one",
+      "favorite-two",
+      "favorite-one",
+      "favorite-two"
+    ],
+    "homeFlashCount": 0,
+    "loaderHeldUntilControlledDocumentCompletion": true,
+    "prematureAndWrongSessionRevealDenied": true,
+    "sidebarHomeCancelsPendingDocument": true,
+    "activeReselectPreservesSession": true,
+    "restartPersistence": true,
+    "nativeScreenshotVisuallyInspected": true,
+    "browserPreviewChecks": [
+      "no Home frame during creation/load or delayed Home event",
+      "minimum window geometry, accent and reduced motion",
+      "slow-load guidance, stopped animation and refresh",
+      "failed-close retention and failed-create retry",
+      "Home during loading and queued local destination during creation",
+      "no reveal when a local destination is already queued",
+      "reselect loading favorite preserves session"
+    ]
+  },
+  "deliveredBinaries": [
+    {
+      "file": "AURA.exe",
+      "sha256": "8D71339F35A5383C98B6B06186DE7712FF35D6C13F0819937AD694A1EFB24FAB"
+    },
+    {
+      "file": "AURA-x64-setup.exe",
+      "sha256": "E79B0FDD3A2CD699DF96968386E6A6BDD952C6E57D742381772E806AA527E0A6"
+    },
+    {
+      "file": "AURA-arm64-setup.exe",
+      "sha256": "E170647F4311FDD6893500AAE7E0E4A34275A22AB93D618D6263205248CD0EAD"
+    }
+  ],
+  "unverified": [
+    "Physical Surface touch/DPI/rotation",
+    "ARM64 runtime",
+    "Provider login/playback",
+    "Installer install/uninstall",
+    "Manual taskbar/fullscreen minimize/restore; the low-level test helper restores a tiny viewport in both the previous and new build",
+    "Native foreground duration accuracy/minimized-time exclusion in this delivery; full-suite timing attempts were affected by desktop focus"
+  ],
+  "pinnedSidebar": {
+    "nativeWheelScroll": true,
+    "sidebarHomeAndSettingsBoundsUnchanged": true,
+    "nativeContentOffset": 90,
+    "browserPreviewWidths": [1400, 620, 360],
+    "homeApplicationsAndSettingsScrolled": true,
+    "independentFavoritesScroll": true,
+    "compactRailBoundsPreservedOnBrowserEntry": true,
+    "nativeScreenshotVisuallyInspected": true
+  },
+  "providerObservation": {
+    "netflixInternal": "User reports black video with subtitles; cause undiagnosed. This change does not alter protected playback. Auto remains External."
+  }
+}

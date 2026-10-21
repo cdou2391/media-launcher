@@ -677,127 +677,145 @@ try {
   result.checks.push(
     "Native child bounds reserve the rail/header, including a real site fullscreen request",
   );
-  await main.evaluate((target) => {
-    const data = JSON.parse(localStorage.getItem("aura-shortcuts-v2"));
-    data.shortcuts.push({
-      id: "usage-fixture",
-      title: "Usage fixture",
-      target,
-      kind: "website",
-      category: "other",
-      favorite: false,
-      launchMode: "internal",
-      allowHttp: true,
-      color: "#123456",
-      mark: "U",
-    });
-    localStorage.setItem("aura-shortcuts-v2", JSON.stringify(data));
-  }, fixtureUrl);
-  await main.reload();
-  const launchUsage = async () => {
-    await main.locator('.rail [data-view="apps"]').click();
-    await main
-      .locator("#all-apps .tile")
-      .filter({ hasText: "Usage fixture" })
-      .click();
-    await main.locator("body.browsing").waitFor();
-    const childPage = await waitFor(
-      () => context.pages().find((page) => page.url().startsWith(fixtureUrl)),
-      "tracked child",
+  if (process.argv.includes("--sidebar-only")) {
+    result.windowRestore = {
+      status: "NOT_RUN",
+      reason:
+        "Low-level restore leaves a tiny viewport on this host in both Preview 4 and this build; manual taskbar/fullscreen restore remains unverified.",
+    };
+    result.usageTiming = {
+      status: "NOT_RUN",
+      reason:
+        "Full-suite foreground timing is affected by desktop focus on this host. Sidebar-focused validation verifies stored usage/pause persistence, not duration accuracy or minimize exclusion.",
+    };
+    await main.locator('.rail [data-view="settings"]').click();
+    await main.locator("#usage-enabled").uncheck();
+    result.usage = await main.evaluate(() =>
+      JSON.parse(localStorage.getItem("aura-usage-v1")),
     );
-    await childPage.locator("h1").click();
-    assert.equal(await childPage.evaluate(() => document.hasFocus()), true);
-  };
-  await launchUsage();
-  const nativeUsageContext = await main.evaluate(() =>
-    window.__TAURI_INTERNALS__.invoke("browser_status"),
-  );
-  assert.equal(nativeUsageContext.shortcutId, "usage-fixture");
-  assert.ok(nativeUsageContext.sessionId > 0);
-  assert.equal(
-    await main.evaluate(() =>
-      window.__TAURI_INTERNALS__.invoke("usage_foreground"),
-    ),
-    true,
-    "AURA must be foreground to validate foreground timing",
-  );
-  await pause(6500);
-  await main.locator('.rail [data-view="settings"]').click();
-  await main.locator("#usage-enabled").uncheck();
-  const usageBefore = await main.evaluate(() =>
-    JSON.parse(localStorage.getItem("aura-usage-v1")),
-  );
-  const timed = usageBefore.shortcuts.find((s) => s.id === "usage-fixture");
-  assert.equal(timed.internalLaunches, 1);
-  assert.ok(
-    timed.internalMs >= 2000,
-    "Actual remote-child foreground time must accrue",
-  );
-  await launchUsage();
-  await pause(1500);
-  await main.locator('.rail [data-view="settings"]').click();
-  const pausedUsage = await main.evaluate(() =>
-    JSON.parse(localStorage.getItem("aura-usage-v1")),
-  );
-  assert.deepEqual(
-    pausedUsage,
-    usageBefore,
-    "Paused usage must not count launches or time",
-  );
-  await main.locator("#usage-clear").click();
-  await main.locator("#usage-cancel").click();
-  assert.ok(
-    (await main.locator("#usage-rows").innerText()).includes("Usage fixture"),
-  );
-  await main.locator("#usage-clear").click();
-  await main.locator("#usage-clear-confirm").click();
-  assert.equal(await main.locator("#usage-rows tr").count(), 0);
-  await main.locator("#usage-enabled").check();
-  await launchUsage();
-  await pause(3000);
-  await main.locator('.rail [data-view="settings"]').click();
-  await main.locator("#usage-enabled").uncheck();
-  result.usage = await main.evaluate(() =>
-    JSON.parse(localStorage.getItem("aura-usage-v1")),
-  );
-  assert.equal(result.usage.shortcuts[0].internalLaunches, 1);
-  assert.ok(result.usage.shortcuts[0].internalMs > 0);
-  result.checks.push(
-    "Native usage tracks the identified remote child in foreground; pause, clear/cancel and per-shortcut counts work",
-  );
-  await main.locator("#usage-enabled").check();
-  await pause(1200);
-  await ownWindowVisibility(6);
-  await waitFor(
-    async () =>
-      !(await main.evaluate(() =>
+  } else {
+    await main.evaluate((target) => {
+      const data = JSON.parse(localStorage.getItem("aura-shortcuts-v2"));
+      data.shortcuts.push({
+        id: "usage-fixture",
+        title: "Usage fixture",
+        target,
+        kind: "website",
+        category: "other",
+        favorite: false,
+        launchMode: "internal",
+        allowHttp: true,
+        color: "#123456",
+        mark: "U",
+      });
+      localStorage.setItem("aura-shortcuts-v2", JSON.stringify(data));
+    }, fixtureUrl);
+    await main.reload();
+    const launchUsage = async () => {
+      await main.locator('.rail [data-view="apps"]').click();
+      await main
+        .locator("#all-apps .tile")
+        .filter({ hasText: "Usage fixture" })
+        .click();
+      await main.locator("body.browsing").waitFor();
+      const childPage = await waitFor(
+        () => context.pages().find((page) => page.url().startsWith(fixtureUrl)),
+        "tracked child",
+      );
+      await childPage.locator("h1").click();
+      assert.equal(await childPage.evaluate(() => document.hasFocus()), true);
+    };
+    await launchUsage();
+    const nativeUsageContext = await main.evaluate(() =>
+      window.__TAURI_INTERNALS__.invoke("browser_status"),
+    );
+    assert.equal(nativeUsageContext.shortcutId, "usage-fixture");
+    assert.ok(nativeUsageContext.sessionId > 0);
+    assert.equal(
+      await main.evaluate(() =>
         window.__TAURI_INTERNALS__.invoke("usage_foreground"),
-      )),
-    "minimized AURA is not foreground",
-  );
-  // A checkpoint after minimization may still persist valid foreground time
-  // earned before it. Compare settled checkpoints rather than stale storage.
-  await pause(6000);
-  const minimizedStart = await main.evaluate(() =>
-    JSON.parse(localStorage.getItem("aura-usage-v1")),
-  );
-  await pause(6000);
-  const minimizedEnd = await main.evaluate(() =>
-    JSON.parse(localStorage.getItem("aura-usage-v1")),
-  );
-  assert.deepEqual(
-    minimizedEnd,
-    minimizedStart,
-    "Minimized app and site time must stop",
-  );
-  await ownWindowVisibility(9);
-  result.checks.push(
-    "Actual native minimize/restore stops foreground duration without inspecting other applications",
-  );
-  await main.locator("#usage-enabled").uncheck();
-  result.usage = await main.evaluate(() =>
-    JSON.parse(localStorage.getItem("aura-usage-v1")),
-  );
+      ),
+      true,
+      "AURA must be foreground to validate foreground timing",
+    );
+    await pause(6500);
+    await main.locator('.rail [data-view="settings"]').click();
+    await main.locator("#usage-enabled").uncheck();
+    const usageBefore = await main.evaluate(() =>
+      JSON.parse(localStorage.getItem("aura-usage-v1")),
+    );
+    const timed = usageBefore.shortcuts.find((s) => s.id === "usage-fixture");
+    assert.equal(timed.internalLaunches, 1);
+    assert.ok(
+      timed.internalMs >= 2000,
+      "Actual remote-child foreground time must accrue",
+    );
+    await launchUsage();
+    await pause(1500);
+    await main.locator('.rail [data-view="settings"]').click();
+    const pausedUsage = await main.evaluate(() =>
+      JSON.parse(localStorage.getItem("aura-usage-v1")),
+    );
+    assert.deepEqual(
+      pausedUsage,
+      usageBefore,
+      "Paused usage must not count launches or time",
+    );
+    await main.locator("#usage-clear").click();
+    await main.locator("#usage-cancel").click();
+    assert.ok(
+      (await main.locator("#usage-rows").innerText()).includes("Usage fixture"),
+    );
+    await main.locator("#usage-clear").click();
+    await main.locator("#usage-clear-confirm").click();
+    assert.equal(await main.locator("#usage-rows tr").count(), 0);
+    await main.locator("#usage-enabled").check();
+    await launchUsage();
+    await pause(3000);
+    await main.locator('.rail [data-view="settings"]').click();
+    await main.locator("#usage-enabled").uncheck();
+    result.usage = await main.evaluate(() =>
+      JSON.parse(localStorage.getItem("aura-usage-v1")),
+    );
+    assert.equal(result.usage.shortcuts[0].internalLaunches, 1);
+    assert.ok(result.usage.shortcuts[0].internalMs > 0);
+    result.checks.push(
+      "Native usage tracks the identified remote child in foreground; pause, clear/cancel and per-shortcut counts work",
+    );
+    await main.locator("#usage-enabled").check();
+    await pause(1200);
+    await ownWindowVisibility(6);
+    await waitFor(
+      async () =>
+        !(await main.evaluate(() =>
+          window.__TAURI_INTERNALS__.invoke("usage_foreground"),
+        )),
+      "minimized AURA is not foreground",
+    );
+    // A checkpoint after minimization may still persist valid foreground time
+    // earned before it. Compare settled checkpoints rather than stale storage.
+    await pause(6000);
+    const minimizedStart = await main.evaluate(() =>
+      JSON.parse(localStorage.getItem("aura-usage-v1")),
+    );
+    await pause(6000);
+    const minimizedEnd = await main.evaluate(() =>
+      JSON.parse(localStorage.getItem("aura-usage-v1")),
+    );
+    assert.deepEqual(
+      minimizedEnd,
+      minimizedStart,
+      "Minimized app and site time must stop",
+    );
+    await ownWindowVisibility(9);
+    result.checks.push(
+      "Actual native minimize/restore stops foreground duration without inspecting other applications",
+    );
+    await main.locator("#usage-enabled").uncheck();
+    result.usage = await main.evaluate(() =>
+      JSON.parse(localStorage.getItem("aura-usage-v1")),
+    );
+  }
   await main.locator('[data-view="settings"]').first().click();
   await main.locator("#exit-app").click();
   await waitFor(
@@ -878,7 +896,11 @@ try {
     "restarted application exit",
   );
   result.status =
-    result.https.status === "PASS" ? "PASS" : "PARTIAL_HTTPS_UNVERIFIED";
+    result.https.status === "PASS"
+      ? process.argv.includes("--sidebar-only")
+        ? "PASS_SCOPED"
+        : "PASS"
+      : "PARTIAL_HTTPS_UNVERIFIED";
   if (result.https.status !== "PASS") process.exitCode = 1;
 } catch (error) {
   result.pages = browser
